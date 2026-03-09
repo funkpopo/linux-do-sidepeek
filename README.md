@@ -70,7 +70,7 @@
 
 ## 发布
 
-- 推送标签 `v*`（例如 `v0.1.0`）后，GitHub Actions 会自动打包扩展并创建 Release
+- 推送标签 `v*`（例如 `v0.3.0`）后，GitHub Actions 会自动打包扩展并创建 Release
 - Release 附件会产出一个可下载的 ZIP 包，包含 `manifest.json` 和 `src/`
 - 建议发版时把 `CHANGELOG.md` 对应条目同步到 GitHub Release Notes，方便直接查看更新记录与致谢
 
