@@ -1,17 +1,14 @@
 (function () {
   const ROOT_ID = "ld-drawer-root";
   const PAGE_OPEN_CLASS = "ld-drawer-page-open";
-  const PAGE_IFRAME_OPEN_CLASS = "ld-drawer-page-iframe-open";
   const ACTIVE_LINK_CLASS = "ld-drawer-topic-link-active";
-  const IFRAME_MODE_CLASS = "ld-drawer-iframe-mode";
   const SETTINGS_KEY = "ld-drawer-settings-v1";
+  const LOAD_MORE_BATCH_SIZE = 20;
+  const LOAD_MORE_TRIGGER_OFFSET = 240;
   const IMAGE_PREVIEW_SCALE_MIN = 1;
   const IMAGE_PREVIEW_SCALE_MAX = 4;
   const IMAGE_PREVIEW_SCALE_STEP = 0.2;
   const DEFAULT_SETTINGS = {
-    previewMode: "smart",
-    postMode: "all",
-    replyOrder: "default",
     drawerWidth: "medium",
     drawerWidthCustom: 720
   };
@@ -65,7 +62,15 @@
     header: null,
     title: null,
     meta: null,
+    drawerBody: null,
     content: null,
+    replyButton: null,
+    replyPanel: null,
+    replyPanelTitle: null,
+    replyTextarea: null,
+    replySubmitButton: null,
+    replyCancelButton: null,
+    replyStatus: null,
     imagePreview: null,
     imagePreviewImage: null,
     imagePreviewCloseButton: null,
@@ -88,13 +93,21 @@
     currentTrackRequest: null,
     currentTrackRequestKey: "",
     currentResolvedTargetPostNumber: null,
-    currentLatestRepliesTopic: null,
     currentFallbackTitle: "",
     currentTopic: null,
+    currentTargetSpec: null,
+    replyTargetPostNumber: null,
+    replyTargetLabel: "",
     abortController: null,
+    loadMoreAbortController: null,
+    replyAbortController: null,
     lastLocation: location.href,
     settings: loadSettings(),
     isResizing: false,
+    isLoadingMorePosts: false,
+    isReplySubmitting: false,
+    loadMoreError: "",
+    loadMoreStatus: null,
     hasShownPreviewNotice: false
   };
 
@@ -132,33 +145,11 @@
           </div>
         </div>
         <div class="ld-drawer-settings" id="ld-drawer-settings" hidden>
-          <div class="ld-drawer-settings-card" role="dialog" aria-modal="true" aria-label="预览选项">
+          <div class="ld-drawer-settings-card" role="dialog" aria-modal="true" aria-label="抽屉选项">
             <div class="ld-settings-head">
-              <div class="ld-settings-title">预览选项</div>
-              <button class="ld-settings-close" type="button" aria-label="关闭预览选项">关闭</button>
+              <div class="ld-settings-title">抽屉选项</div>
+              <button class="ld-settings-close" type="button" aria-label="关闭抽屉选项">关闭</button>
             </div>
-            <label class="ld-setting-field">
-              <span class="ld-setting-label">预览模式</span>
-              <select class="ld-setting-control" data-setting="previewMode">
-                <option value="smart">智能预览</option>
-                <option value="iframe">整页模式</option>
-              </select>
-            </label>
-            <label class="ld-setting-field">
-              <span class="ld-setting-label">内容范围</span>
-              <select class="ld-setting-control" data-setting="postMode">
-                <option value="all">完整主题</option>
-                <option value="first">仅首帖</option>
-              </select>
-            </label>
-            <label class="ld-setting-field">
-              <span class="ld-setting-label">回复排序</span>
-              <select class="ld-setting-control" data-setting="replyOrder">
-                <option value="default">默认顺序</option>
-                <option value="latestFirst">首帖 + 最新回复</option>
-              </select>
-              <span class="ld-setting-hint">长帖下会优先显示最新一批回复，不代表把整帖一次性完整倒序</span>
-            </label>
             <label class="ld-setting-field">
               <span class="ld-setting-label">抽屉宽度</span>
               <select class="ld-setting-control" data-setting="drawerWidth">
@@ -175,6 +166,26 @@
         <div class="ld-drawer-body">
           <div class="ld-drawer-content"></div>
         </div>
+        <button class="ld-drawer-reply-fab" type="button" aria-expanded="false" aria-controls="ld-drawer-reply-panel" aria-label="回复这个主题" title="回复这个主题">
+          <span class="ld-drawer-reply-fab-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4 12.5c0-4.14 3.36-7.5 7.5-7.5h7a1.5 1.5 0 0 1 0 3h-7A4.5 4.5 0 0 0 7 12.5v1.38l1.44-1.44a1.5 1.5 0 0 1 2.12 2.12l-4 4a1.5 1.5 0 0 1-2.12 0l-4-4a1.5 1.5 0 1 1 2.12-2.12L4 13.88V12.5Z" fill="currentColor"></path>
+            </svg>
+          </span>
+          <span class="ld-drawer-reply-fab-label">回复</span>
+        </button>
+        <div class="ld-drawer-reply-panel" id="ld-drawer-reply-panel" hidden>
+          <div class="ld-reply-panel-head">
+            <div class="ld-reply-panel-title">回复主题</div>
+            <button class="ld-reply-panel-close" type="button" aria-label="关闭快速回复">关闭</button>
+          </div>
+          <textarea class="ld-reply-textarea" rows="7" placeholder="写点什么... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送"></textarea>
+          <div class="ld-reply-status" aria-live="polite"></div>
+          <div class="ld-reply-actions">
+            <button class="ld-reply-action" type="button" data-action="cancel">取消</button>
+            <button class="ld-reply-action ld-reply-action-primary" type="button" data-action="submit">发送回复</button>
+          </div>
+        </div>
         <div class="ld-image-preview" hidden aria-hidden="true">
           <button class="ld-image-preview-close" type="button" aria-label="关闭图片预览">关闭</button>
           <div class="ld-image-preview-stage">
@@ -190,7 +201,15 @@
     state.header = root.querySelector(".ld-drawer-header");
     state.title = root.querySelector(".ld-drawer-title");
     state.meta = root.querySelector(".ld-drawer-meta");
+    state.drawerBody = root.querySelector(".ld-drawer-body");
     state.content = root.querySelector(".ld-drawer-content");
+    state.replyButton = root.querySelector(".ld-drawer-reply-fab");
+    state.replyPanel = root.querySelector(".ld-drawer-reply-panel");
+    state.replyPanelTitle = root.querySelector(".ld-reply-panel-title");
+    state.replyTextarea = root.querySelector(".ld-reply-textarea");
+    state.replySubmitButton = root.querySelector('[data-action="submit"]');
+    state.replyCancelButton = root.querySelector('[data-action="cancel"]');
+    state.replyStatus = root.querySelector(".ld-reply-status");
     state.imagePreview = root.querySelector(".ld-image-preview");
     state.imagePreviewImage = root.querySelector(".ld-image-preview-image");
     state.imagePreviewCloseButton = root.querySelector(".ld-image-preview-close");
@@ -207,8 +226,14 @@
     state.prevButton.addEventListener("click", () => navigateTopic(-1));
     state.nextButton.addEventListener("click", () => navigateTopic(1));
     state.settingsToggle.addEventListener("click", toggleSettingsPanel);
+    state.replyButton.addEventListener("click", toggleReplyPanel);
+    state.replyCancelButton.addEventListener("click", () => setReplyPanelOpen(false));
+    state.replySubmitButton.addEventListener("click", handleReplySubmit);
+    root.querySelector(".ld-reply-panel-close").addEventListener("click", () => setReplyPanelOpen(false));
+    state.replyTextarea.addEventListener("keydown", handleReplyTextareaKeydown);
     root.addEventListener("click", handleDrawerRootClick);
     root.addEventListener("wheel", handleDrawerRootWheel, { passive: false });
+    state.drawerBody.addEventListener("scroll", handleDrawerBodyScroll, { passive: true });
     state.settingsPanel.addEventListener("click", handleSettingsPanelClick);
     state.settingsPanel.addEventListener("change", handleSettingsChange);
     state.settingsCloseButton.addEventListener("click", () => setSettingsPanelOpen(false));
@@ -218,6 +243,7 @@
     syncSettingsUI();
     applyDrawerWidth();
     syncNavigationState();
+    syncReplyUI();
     updateSettingsPopoverPosition();
   }
 
@@ -248,6 +274,10 @@
       setSettingsPanelOpen(false);
     }
 
+    if (!state.replyPanel?.hidden && !target.closest(".ld-drawer-reply-panel") && !target.closest(".ld-drawer-reply-fab")) {
+      setReplyPanelOpen(false);
+    }
+
     const link = target.closest("a[href]");
     if (!link || link.closest(`#${ROOT_ID}`)) {
       return;
@@ -276,6 +306,13 @@
       event.preventDefault();
       event.stopPropagation();
       setSettingsPanelOpen(false);
+      return;
+    }
+
+    if (event.key === "Escape" && !state.replyPanel?.hidden) {
+      event.preventDefault();
+      event.stopPropagation();
+      setReplyPanelOpen(false);
       return;
     }
 
@@ -382,8 +419,11 @@
     state.currentUrl = topicUrl;
     state.currentFallbackTitle = fallbackTitle || "";
     state.currentResolvedTargetPostNumber = null;
+    state.currentTargetSpec = null;
     state.currentTopic = null;
-    state.currentLatestRepliesTopic = null;
+    state.loadMoreError = "";
+    state.isLoadingMorePosts = false;
+    resetReplyComposer();
     state.title.textContent = fallbackTitle || "加载中…";
     state.meta.textContent = "正在载入帖子内容…";
     state.openInTab.href = topicUrl;
@@ -394,7 +434,6 @@
 
     document.body.classList.add(PAGE_OPEN_CLASS);
     state.root.setAttribute("aria-hidden", "false");
-    setIframeModeEnabled(state.settings.previewMode === "iframe");
     updateSettingsPopoverPosition();
 
     loadTopic(topicUrl, fallbackTitle, topicIdHint);
@@ -406,8 +445,10 @@
       state.abortController = null;
     }
 
+    cancelLoadMoreRequest();
+    cancelReplyRequest();
+
     document.body.classList.remove(PAGE_OPEN_CLASS);
-    setIframeModeEnabled(false);
     state.root?.setAttribute("aria-hidden", "true");
     state.currentUrl = "";
     state.currentEntryElement = null;
@@ -418,10 +459,13 @@
     state.currentTrackRequest = null;
     state.currentTrackRequestKey = "";
     state.currentResolvedTargetPostNumber = null;
-    state.currentLatestRepliesTopic = null;
     state.currentFallbackTitle = "";
     state.currentTopic = null;
+    state.currentTargetSpec = null;
     state.meta.textContent = "";
+    state.loadMoreError = "";
+    state.isLoadingMorePosts = false;
+    resetReplyComposer();
     closeImagePreview();
     clearHighlight();
     setSettingsPanelOpen(false);
@@ -531,22 +575,17 @@
   }
 
   async function loadTopic(topicUrl, fallbackTitle, topicIdHint = null) {
-    closeImagePreview();
-
-    if (state.settings.previewMode === "iframe") {
-      if (!state.currentViewTracked) {
-        ensureTrackedTopicVisit(topicUrl, topicIdHint).catch(() => {});
-      }
-      renderIframeFallback(topicUrl, fallbackTitle, null, true);
-      return;
-    }
+    cancelLoadMoreRequest();
+    state.isLoadingMorePosts = false;
+    state.loadMoreError = "";
 
     if (state.abortController) {
       state.abortController.abort();
-      if (!state.currentViewTracked) {
-        state.currentTrackRequest = null;
-        state.currentTrackRequestKey = "";
-      }
+    }
+
+    if (!state.currentViewTracked) {
+      state.currentTrackRequest = null;
+      state.currentTrackRequestKey = "";
     }
 
     const controller = new AbortController();
@@ -557,7 +596,6 @@
       let resolvedTargetPostNumber = null;
       let topic;
       let targetedTopic = null;
-      let latestRepliesTopic = null;
 
       if (state.currentViewTracked) {
         topic = await fetchTrackedTopicJson(topicUrl, controller.signal, topicIdHint, {
@@ -579,35 +617,17 @@
         resolvedTargetPostNumber = resolveTopicTargetPostNumber(targetSpec, topic, null);
       }
 
-      if (shouldLoadLatestRepliesTopic(topic, targetSpec)) {
-        if (targetSpec?.targetToken === "last" && targetedTopic) {
-          latestRepliesTopic = targetedTopic;
-        } else {
-          try {
-            latestRepliesTopic = await fetchLatestRepliesTopic(topicUrl, controller.signal, topicIdHint);
-          } catch (error) {
-            if (controller.signal.aborted) {
-              throw error;
-            }
-            latestRepliesTopic = null;
-          }
-        }
-      }
-
       if (controller.signal.aborted || state.currentUrl !== topicUrl) {
         return;
       }
 
-      renderTopic(topic, topicUrl, fallbackTitle, resolvedTargetPostNumber, {
-        latestRepliesTopic,
-        targetSpec
-      });
+      renderTopic(topic, topicUrl, fallbackTitle, resolvedTargetPostNumber, { targetSpec });
     } catch (error) {
       if (controller.signal.aborted) {
         return;
       }
 
-      renderIframeFallback(topicUrl, fallbackTitle, error);
+      renderTopicError(topicUrl, fallbackTitle, error);
     } finally {
       if (state.abortController === controller) {
         state.abortController = null;
@@ -616,27 +636,34 @@
   }
 
   function renderTopic(topic, topicUrl, fallbackTitle, resolvedTargetPostNumber = null, options = {}) {
-    setIframeModeEnabled(false);
-
     const posts = topic?.post_stream?.posts || [];
 
     if (!posts.length) {
-      renderIframeFallback(topicUrl, fallbackTitle, new Error("No posts available"));
+      renderTopicError(topicUrl, fallbackTitle, new Error("No posts available"));
       return;
     }
 
     const targetSpec = options.targetSpec || getTopicTargetSpec(topicUrl, state.currentTopicIdHint);
-    const latestRepliesTopic = options.latestRepliesTopic || null;
-    const viewModel = buildTopicViewModel(topic, latestRepliesTopic, targetSpec);
+    const viewModel = buildTopicViewModel(topic, targetSpec);
+    const shouldPreserveScroll = Number.isFinite(options.preserveScrollTop);
 
     state.currentTopic = topic;
-    state.currentLatestRepliesTopic = latestRepliesTopic;
+    state.currentTargetSpec = targetSpec;
     state.currentTopicIdHint = typeof topic?.id === "number" ? topic.id : state.currentTopicIdHint;
     state.currentResolvedTargetPostNumber = resolvedTargetPostNumber;
     state.title.textContent = topic.title || fallbackTitle || "帖子预览";
     state.meta.textContent = buildTopicMeta(topic, viewModel.posts.length);
     state.content.replaceChildren(buildTopicView(topic, viewModel));
-    scrollTopicViewToTargetPost(resolvedTargetPostNumber);
+    syncReplyUI();
+
+    if (shouldPreserveScroll && state.drawerBody) {
+      state.drawerBody.scrollTop = options.preserveScrollTop;
+    } else {
+      scrollTopicViewToTargetPost(resolvedTargetPostNumber);
+    }
+
+    updateLoadMoreStatus();
+    queueAutoLoadCheck();
   }
 
   function buildTopicView(topic, viewModel) {
@@ -675,130 +702,54 @@
       }
     }
 
+    const postList = document.createElement("div");
+    postList.className = "ld-topic-post-list";
+
     for (const post of visiblePosts) {
-      wrapper.appendChild(buildPostCard(post));
+      postList.appendChild(buildPostCard(post));
     }
+
+    wrapper.appendChild(postList);
 
     const totalPosts = topic?.posts_count || basePosts.length;
-    if (state.settings.postMode === "first" && basePosts.length > 1) {
+    const footer = document.createElement("div");
+    footer.className = "ld-topic-footer";
+
+    if (viewModel.hasHiddenPosts) {
       const note = document.createElement("div");
       note.className = "ld-topic-note";
-      note.textContent = `当前为“仅首帖”模式。想看回复，可在右上角选项里切回“完整主题”。`;
-      wrapper.appendChild(note);
+      note.textContent = viewModel.canAutoLoadMore
+        ? `当前已加载 ${visiblePosts.length} / ${totalPosts} 条帖子，继续下滑会自动加载更多回复。`
+        : `当前抽屉预览了 ${visiblePosts.length} / ${totalPosts} 条帖子，完整内容可点右上角“新标签打开”。`;
+      footer.appendChild(note);
     }
 
-    const replyModeNote = buildReplyModeNote(viewModel);
-    if (replyModeNote) {
-      const note = document.createElement("div");
-      note.className = "ld-topic-note";
-      note.textContent = replyModeNote;
-      wrapper.appendChild(note);
+    if (viewModel.canAutoLoadMore) {
+      const status = document.createElement("div");
+      status.className = "ld-topic-note ld-topic-note-loading";
+      status.setAttribute("aria-live", "polite");
+      footer.appendChild(status);
+      state.loadMoreStatus = status;
+    } else {
+      state.loadMoreStatus = null;
     }
 
-    if (totalPosts > visiblePosts.length) {
-      const note = document.createElement("div");
-      note.className = "ld-topic-note";
-      note.textContent = `当前抽屉预览了 ${visiblePosts.length} / ${totalPosts} 条帖子，完整内容可点右上角“新标签打开”。`;
-      wrapper.appendChild(note);
+    if (footer.childElementCount > 0) {
+      wrapper.appendChild(footer);
     }
 
     return wrapper;
   }
 
-  function buildTopicViewModel(topic, latestRepliesTopic = null, targetSpec = null) {
+  function buildTopicViewModel(topic, targetSpec = null) {
     const posts = topic?.post_stream?.posts || [];
-
-    if (state.settings.postMode === "first") {
-      return {
-        posts: posts.slice(0, 1),
-        mode: "first"
-      };
-    }
-
-    if (targetSpec?.targetPostNumber) {
-      return {
-        posts,
-        mode: "targeted"
-      };
-    }
-
-    if (state.settings.replyOrder !== "latestFirst" || posts.length <= 1) {
-      return {
-        posts,
-        mode: "default"
-      };
-    }
-
-    if (topicHasCompletePostStream(topic)) {
-      return {
-        posts: [posts[0], ...posts.slice(1).reverse()],
-        mode: "latestComplete"
-      };
-    }
-
-    if (latestRepliesTopic) {
-      return {
-        posts: getLatestRepliesDisplayPosts(topic, latestRepliesTopic),
-        mode: "latestWindow"
-      };
-    }
 
     return {
       posts,
-      mode: "latestUnavailable"
+      mode: targetSpec?.hasTarget ? "targeted" : "all",
+      canAutoLoadMore: !targetSpec?.hasTarget,
+      hasHiddenPosts: hasMoreTopicPosts(topic)
     };
-  }
-
-  function getLatestRepliesDisplayPosts(topic, latestRepliesTopic) {
-    const firstPost = getFirstTopicPost(topic) || getFirstTopicPost(latestRepliesTopic);
-    const replies = [];
-    const seenPostNumbers = new Set();
-
-    for (const post of latestRepliesTopic?.post_stream?.posts || []) {
-      if (typeof post?.post_number !== "number") {
-        continue;
-      }
-
-      if (firstPost && post.post_number === firstPost.post_number) {
-        continue;
-      }
-
-      if (seenPostNumbers.has(post.post_number)) {
-        continue;
-      }
-
-      seenPostNumbers.add(post.post_number);
-      replies.push(post);
-    }
-
-    replies.sort((left, right) => right.post_number - left.post_number);
-
-    if (!firstPost) {
-      return replies;
-    }
-
-    return [firstPost, ...replies];
-  }
-
-  function getFirstTopicPost(topic) {
-    const posts = topic?.post_stream?.posts || [];
-    return posts.find((post) => post?.post_number === 1) || posts[0] || null;
-  }
-
-  function buildReplyModeNote(viewModel) {
-    if (viewModel.mode === "latestComplete") {
-      return "当前为“首帖 + 最新回复”模式。首帖固定在顶部，其余回复按从新到旧显示。";
-    }
-
-    if (viewModel.mode === "latestWindow") {
-      return "当前为“首帖 + 最新回复”模式。首帖固定在顶部，下面显示的是最新一批回复；长帖不会一次性把整帖完整倒序。";
-    }
-
-    if (viewModel.mode === "latestUnavailable") {
-      return "当前已切到“首帖 + 最新回复”模式，但这次没拿到最新回复窗口，暂按当前顺序显示。";
-    }
-
-    return "";
   }
 
   function getTagLabel(tag) {
@@ -860,8 +811,288 @@
       link.rel = "noopener noreferrer";
     }
 
-    article.append(header, body);
+    const actions = document.createElement("div");
+    actions.className = "ld-post-actions";
+
+    const replyButton = document.createElement("button");
+    replyButton.type = "button";
+    replyButton.className = "ld-post-reply-button";
+    replyButton.setAttribute("aria-label", `回复第 ${post.post_number || "?"} 条`);
+    replyButton.innerHTML = `
+      <span class="ld-post-reply-button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M4 12.5c0-4.14 3.36-7.5 7.5-7.5h7a1.5 1.5 0 0 1 0 3h-7A4.5 4.5 0 0 0 7 12.5v1.38l1.44-1.44a1.5 1.5 0 0 1 2.12 2.12l-4 4a1.5 1.5 0 0 1-2.12 0l-4-4a1.5 1.5 0 1 1 2.12-2.12L4 13.88V12.5Z" fill="currentColor"></path>
+        </svg>
+      </span>
+      <span class="ld-post-reply-button-label">回复这条</span>
+    `;
+    replyButton.addEventListener("click", () => openReplyPanelForPost(post));
+
+    actions.appendChild(replyButton);
+    article.append(header, body, actions);
     return article;
+  }
+
+  function handleDrawerBodyScroll() {
+    maybeLoadMorePosts();
+  }
+
+  function toggleReplyPanel() {
+    if (!state.currentTopic || state.isReplySubmitting) {
+      return;
+    }
+
+    if (state.replyPanel?.hidden) {
+      setReplyTarget(null);
+    }
+
+    setReplyPanelOpen(state.replyPanel?.hidden);
+  }
+
+  function openReplyPanelForPost(post) {
+    if (!state.currentTopic || !post || state.isReplySubmitting) {
+      return;
+    }
+
+    setReplyTarget(post);
+    setReplyPanelOpen(true);
+  }
+
+  function setReplyPanelOpen(isOpen) {
+    if (!state.replyPanel || !state.replyButton) {
+      return;
+    }
+
+    if (isOpen && !state.currentTopic) {
+      return;
+    }
+
+    state.replyPanel.hidden = !isOpen;
+    state.replyButton.setAttribute("aria-expanded", String(isOpen));
+
+    if (!isOpen) {
+      setReplyTarget(null);
+      return;
+    }
+
+    queueMicrotask(() => state.replyTextarea?.focus());
+  }
+
+  function setReplyTarget(post) {
+    if (post && typeof post === "object" && Number.isFinite(post.post_number)) {
+      state.replyTargetPostNumber = Number(post.post_number);
+      state.replyTargetLabel = buildReplyTargetLabel(post);
+    } else {
+      state.replyTargetPostNumber = null;
+      state.replyTargetLabel = "";
+    }
+
+    syncReplyUI();
+  }
+
+  function buildReplyTargetLabel(post) {
+    const parts = [];
+
+    if (Number.isFinite(post?.post_number)) {
+      parts.push(`#${post.post_number}`);
+    }
+
+    if (post?.username) {
+      parts.push(`@${post.username}`);
+    }
+
+    return parts.join(" ") || "这条回复";
+  }
+
+  function handleReplyTextareaKeydown(event) {
+    if (!event.metaKey && !event.ctrlKey) {
+      return;
+    }
+
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    handleReplySubmit();
+  }
+
+  async function handleReplySubmit() {
+    if (!state.currentTopic || state.isReplySubmitting || !state.replyTextarea || !state.replyStatus) {
+      return;
+    }
+
+    const raw = state.replyTextarea.value.trim();
+    if (!raw) {
+      state.replyStatus.textContent = "先写点内容再发送。";
+      state.replyTextarea.focus();
+      return;
+    }
+
+    cancelReplyRequest();
+    state.isReplySubmitting = true;
+    syncReplyUI();
+    state.replyStatus.textContent = "正在发送回复...";
+
+    const controller = new AbortController();
+    state.replyAbortController = controller;
+
+    try {
+      const createdPost = await createTopicReply(
+        state.currentTopic.id,
+        raw,
+        controller.signal,
+        state.replyTargetPostNumber
+      );
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      state.replyTextarea.value = "";
+      state.replyStatus.textContent = "回复已发送。";
+      appendCreatedReplyToCurrentTopic(createdPost);
+      setReplyPanelOpen(false);
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      state.replyStatus.textContent = error?.message || "回复发送失败";
+    } finally {
+      if (state.replyAbortController === controller) {
+        state.replyAbortController = null;
+      }
+
+      state.isReplySubmitting = false;
+      syncReplyUI();
+    }
+  }
+
+  function queueAutoLoadCheck() {
+    requestAnimationFrame(() => {
+      maybeLoadMorePosts();
+    });
+  }
+
+  function maybeLoadMorePosts() {
+    if (!state.drawerBody || !state.currentTopic) {
+      return;
+    }
+
+    if (state.currentTargetSpec?.hasTarget || state.isLoadingMorePosts || !hasMoreTopicPosts(state.currentTopic)) {
+      updateLoadMoreStatus();
+      return;
+    }
+
+    const remainingDistance = state.drawerBody.scrollHeight - state.drawerBody.scrollTop - state.drawerBody.clientHeight;
+    if (remainingDistance > LOAD_MORE_TRIGGER_OFFSET) {
+      updateLoadMoreStatus();
+      return;
+    }
+
+    loadMorePosts().catch(() => {});
+  }
+
+  async function loadMorePosts() {
+    if (!state.currentTopic || state.isLoadingMorePosts || state.currentTargetSpec?.hasTarget) {
+      return;
+    }
+
+    const nextPostIds = getNextTopicPostIds(state.currentTopic);
+    if (!nextPostIds.length) {
+      updateLoadMoreStatus();
+      return;
+    }
+
+    cancelLoadMoreRequest();
+    state.isLoadingMorePosts = true;
+    state.loadMoreError = "";
+    updateLoadMoreStatus();
+
+    const controller = new AbortController();
+    const currentUrl = state.currentUrl;
+    const previousScrollTop = state.drawerBody?.scrollTop || 0;
+    state.loadMoreAbortController = controller;
+
+    try {
+      const posts = await fetchTopicPostsBatch(currentUrl, nextPostIds, controller.signal, state.currentTopicIdHint);
+      if (controller.signal.aborted || state.currentUrl !== currentUrl || !posts.length) {
+        return;
+      }
+
+      const nextTopic = mergeTopicPreviewData(state.currentTopic, {
+        posts_count: state.currentTopic.posts_count,
+        post_stream: {
+          posts
+        }
+      });
+
+      state.isLoadingMorePosts = false;
+      state.loadMoreError = "";
+      renderTopic(nextTopic, currentUrl, state.currentFallbackTitle, state.currentResolvedTargetPostNumber, {
+        targetSpec: state.currentTargetSpec,
+        preserveScrollTop: previousScrollTop
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      state.isLoadingMorePosts = false;
+      state.loadMoreError = error?.message || "加载更多失败";
+      updateLoadMoreStatus();
+    } finally {
+      if (state.loadMoreAbortController === controller) {
+        state.loadMoreAbortController = null;
+      }
+    }
+  }
+
+  function cancelLoadMoreRequest() {
+    if (state.loadMoreAbortController) {
+      state.loadMoreAbortController.abort();
+      state.loadMoreAbortController = null;
+    }
+  }
+
+  function cancelReplyRequest() {
+    if (state.replyAbortController) {
+      state.replyAbortController.abort();
+      state.replyAbortController = null;
+    }
+  }
+
+  function updateLoadMoreStatus() {
+    if (!state.loadMoreStatus) {
+      return;
+    }
+
+    if (!state.currentTopic || state.currentTargetSpec?.hasTarget) {
+      state.loadMoreStatus.textContent = "";
+      state.loadMoreStatus.hidden = true;
+      return;
+    }
+
+    state.loadMoreStatus.hidden = false;
+
+    if (state.isLoadingMorePosts) {
+      state.loadMoreStatus.textContent = "正在加载更多回复...";
+      return;
+    }
+
+    if (state.loadMoreError) {
+      state.loadMoreStatus.textContent = `加载更多失败：${state.loadMoreError}`;
+      return;
+    }
+
+    if (hasMoreTopicPosts(state.currentTopic)) {
+      const loadedCount = (state.currentTopic.post_stream?.posts || []).length;
+      const totalCount = state.currentTopic.posts_count || loadedCount;
+      state.loadMoreStatus.textContent = `已加载 ${loadedCount} / ${totalCount}，继续下滑自动加载更多`;
+      return;
+    }
+
+    state.loadMoreStatus.textContent = "已加载完当前主题内容";
   }
 
   function handleDrawerRootClick(event) {
@@ -880,11 +1111,6 @@
 
     const image = target.closest(".ld-post-body img");
     if (!(image instanceof HTMLImageElement)) {
-      return;
-    }
-
-    const imageLink = image.closest("a[href]");
-    if (imageLink instanceof HTMLAnchorElement && !looksLikeImageUrl(imageLink.href)) {
       return;
     }
 
@@ -1021,30 +1247,32 @@
     }
   }
 
-  function renderIframeFallback(topicUrl, fallbackTitle, error, forcedIframe = false) {
-    setIframeModeEnabled(true);
-
+  function renderTopicError(topicUrl, fallbackTitle, error) {
+    cancelLoadMoreRequest();
+    cancelReplyRequest();
     state.currentTopic = null;
+    state.currentTargetSpec = null;
+    state.currentResolvedTargetPostNumber = null;
+    state.isLoadingMorePosts = false;
+    state.isReplySubmitting = false;
+    state.loadMoreError = "";
+    state.loadMoreStatus = null;
     state.title.textContent = fallbackTitle || "帖子预览";
-    state.meta.textContent = forcedIframe ? "当前为整页模式。" : "接口预览失败，已回退为完整页面。";
+    state.meta.textContent = "智能预览暂时不可用。";
+    resetReplyComposer();
 
     const container = document.createElement("div");
-    container.className = "ld-iframe-fallback";
+    container.className = "ld-topic-error-state";
 
-    if (error) {
-      const note = document.createElement("div");
-      note.className = "ld-topic-note ld-topic-note-error";
-      note.textContent = `预览接口不可用：${error?.message || "未知错误"}`;
-      container.append(note);
-    }
+    const errorNote = document.createElement("div");
+    errorNote.className = "ld-topic-note ld-topic-note-error";
+    errorNote.textContent = `预览加载失败：${error?.message || "未知错误"}`;
 
-    const iframe = document.createElement("iframe");
-    iframe.className = "ld-topic-iframe";
-    iframe.src = topicUrl;
-    iframe.loading = "lazy";
-    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    const hintNote = document.createElement("div");
+    hintNote.className = "ld-topic-note";
+    hintNote.textContent = `可以点右上角“新标签打开”查看原帖：${topicUrl}`;
 
-    container.append(iframe);
+    container.append(errorNote, hintNote);
     state.content.replaceChildren(container);
   }
 
@@ -1118,24 +1346,87 @@
     return request;
   }
 
-  function getLatestRepliesTopicUrl(topicUrl, topicIdHint = null) {
+  function toTopicPostsJsonUrl(topicUrl, postIds, topicIdHint = null) {
     const url = new URL(topicUrl);
     const parsed = parseTopicPath(url.pathname, topicIdHint);
 
     url.hash = "";
     url.search = "";
-    url.pathname = parsed?.topicPath
-      ? `${parsed.topicPath}/last`
-      : `${stripTrailingSlash(url.pathname)}/last`;
+    url.pathname = parsed?.topicId
+      ? `/t/${parsed.topicId}/posts.json`
+      : `${stripTrailingSlash(url.pathname)}/posts.json`;
+
+    for (const postId of postIds) {
+      if (Number.isFinite(postId)) {
+        url.searchParams.append("post_ids[]", String(postId));
+      }
+    }
 
     return url.toString().replace(/\/$/, "");
   }
 
-  async function fetchLatestRepliesTopic(topicUrl, signal, topicIdHint = null) {
-    return fetchTrackedTopicJson(getLatestRepliesTopicUrl(topicUrl, topicIdHint), signal, topicIdHint, {
-      canonical: false,
-      trackVisit: false
+  async function fetchTopicPostsBatch(topicUrl, postIds, signal, topicIdHint = null) {
+    const response = await fetch(toTopicPostsJsonUrl(topicUrl, postIds, topicIdHint), {
+      credentials: "include",
+      signal,
+      headers: {
+        Accept: "application/json"
+      }
     });
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok || !contentType.includes("json")) {
+      throw new Error(`Unexpected response: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data?.post_stream?.posts || [];
+  }
+
+  async function createTopicReply(topicId, raw, signal, replyToPostNumber = null) {
+    const csrfToken = getCsrfToken();
+    if (!csrfToken) {
+      throw new Error("未找到登录令牌，请刷新页面后重试");
+    }
+
+    const body = new URLSearchParams();
+    body.set("raw", raw);
+    body.set("topic_id", String(topicId));
+    if (Number.isFinite(replyToPostNumber)) {
+      body.set("reply_to_post_number", String(replyToPostNumber));
+    }
+
+    const response = await fetch(`${location.origin}/posts.json`, {
+      method: "POST",
+      credentials: "include",
+      signal,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRF-Token": csrfToken
+      },
+      body
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("json")
+      ? await response.json()
+      : null;
+
+    if (!response.ok) {
+      const message = Array.isArray(data?.errors) && data.errors.length > 0
+        ? data.errors.join("；")
+        : (data?.error || `Unexpected response: ${response.status}`);
+      throw new Error(message);
+    }
+
+    return data;
+  }
+
+  function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+    return token.trim();
   }
 
   function buildTopicRequestHeaders(topicId) {
@@ -1149,6 +1440,43 @@
     }
 
     return headers;
+  }
+
+  function getTopicStreamIds(topic) {
+    const stream = topic?.post_stream?.stream;
+    if (Array.isArray(stream) && stream.length > 0) {
+      return stream.filter((postId) => Number.isFinite(postId));
+    }
+
+    return (topic?.post_stream?.posts || [])
+      .map((post) => post?.id)
+      .filter((postId) => Number.isFinite(postId));
+  }
+
+  function getLoadedTopicPostIds(topic) {
+    return (topic?.post_stream?.posts || [])
+      .map((post) => post?.id)
+      .filter((postId) => Number.isFinite(postId));
+  }
+
+  function getNextTopicPostIds(topic, batchSize = LOAD_MORE_BATCH_SIZE) {
+    const streamIds = getTopicStreamIds(topic);
+    if (!streamIds.length) {
+      return [];
+    }
+
+    const loadedPostIds = new Set(getLoadedTopicPostIds(topic));
+    return streamIds.filter((postId) => !loadedPostIds.has(postId)).slice(0, batchSize);
+  }
+
+  function hasMoreTopicPosts(topic) {
+    if (getNextTopicPostIds(topic, 1).length > 0) {
+      return true;
+    }
+
+    const posts = topic?.post_stream?.posts || [];
+    const totalPosts = Number(topic?.posts_count || 0);
+    return totalPosts > 0 && posts.length < totalPosts;
   }
 
   function topicHasPostNumber(topic, postNumber) {
@@ -1178,7 +1506,7 @@
   }
 
   function shouldFetchTargetedTopic(topic, targetSpec) {
-    if (!targetSpec?.hasTarget || state.settings.postMode === "first") {
+    if (!targetSpec?.hasTarget) {
       return false;
     }
 
@@ -1193,26 +1521,8 @@
     return true;
   }
 
-  function shouldLoadLatestRepliesTopic(topic, targetSpec) {
-    if (state.settings.postMode === "first" || state.settings.replyOrder !== "latestFirst") {
-      return false;
-    }
-
-    if (targetSpec?.targetPostNumber) {
-      return false;
-    }
-
-    if (targetSpec?.hasTarget && targetSpec.targetToken && targetSpec.targetToken !== "last") {
-      return false;
-    }
-
-    return !topicHasCompletePostStream(topic);
-  }
-
   function topicHasCompletePostStream(topic) {
-    const posts = topic?.post_stream?.posts || [];
-    const totalPosts = Number(topic?.posts_count || 0);
-    return posts.length > 0 && totalPosts > 0 && posts.length >= totalPosts;
+    return !hasMoreTopicPosts(topic);
   }
 
   function resolveTopicTargetPostNumber(targetSpec, topic, targetedTopic) {
@@ -1246,6 +1556,8 @@
 
   function mergeTopicPreviewData(primaryTopic, supplementalTopic) {
     const mergedPosts = new Map();
+    const mergedStream = [];
+    const seenStreamPostIds = new Set();
 
     for (const post of primaryTopic?.post_stream?.posts || []) {
       if (typeof post?.post_number === "number") {
@@ -1259,15 +1571,73 @@
       }
     }
 
+    for (const postId of getTopicStreamIds(primaryTopic)) {
+      if (!seenStreamPostIds.has(postId)) {
+        seenStreamPostIds.add(postId);
+        mergedStream.push(postId);
+      }
+    }
+
+    for (const postId of getTopicStreamIds(supplementalTopic)) {
+      if (!seenStreamPostIds.has(postId)) {
+        seenStreamPostIds.add(postId);
+        mergedStream.push(postId);
+      }
+    }
+
+    for (const postId of getLoadedTopicPostIds({ post_stream: { posts: Array.from(mergedPosts.values()) } })) {
+      if (!seenStreamPostIds.has(postId)) {
+        seenStreamPostIds.add(postId);
+        mergedStream.push(postId);
+      }
+    }
+
     const posts = Array.from(mergedPosts.values()).sort((left, right) => left.post_number - right.post_number);
 
     return {
       ...primaryTopic,
+      posts_count: Math.max(Number(primaryTopic?.posts_count || 0), Number(supplementalTopic?.posts_count || 0)) || primaryTopic?.posts_count || supplementalTopic?.posts_count,
       post_stream: {
         ...(primaryTopic?.post_stream || {}),
+        stream: mergedStream,
         posts
       }
     };
+  }
+
+  function appendCreatedReplyToCurrentTopic(createdPost) {
+    if (!state.currentTopic || !createdPost || typeof createdPost !== "object") {
+      return;
+    }
+
+    const createdPostId = Number(createdPost.id);
+    const createdPostNumber = Number(createdPost.post_number);
+    if (!Number.isFinite(createdPostId) || !Number.isFinite(createdPostNumber)) {
+      return;
+    }
+
+    const previousScrollTop = state.drawerBody?.scrollTop || 0;
+    const nextTopic = mergeTopicPreviewData(state.currentTopic, {
+      posts_count: Math.max(
+        Number(state.currentTopic.posts_count || 0),
+        Number(createdPost.topic_posts_count || 0),
+        (state.currentTopic.post_stream?.posts || []).length + 1
+      ),
+      post_stream: {
+        stream: [createdPostId],
+        posts: [createdPost]
+      }
+    });
+
+    renderTopic(nextTopic, state.currentUrl, state.currentFallbackTitle, null, {
+      targetSpec: state.currentTargetSpec,
+      preserveScrollTop: previousScrollTop
+    });
+
+    requestAnimationFrame(() => {
+      const target = state.content?.querySelector(`.ld-post-card[data-post-number="${createdPostNumber}"]`);
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
   }
 
   function isPrimaryTopicLink(link) {
@@ -1336,9 +1706,11 @@
   }
 
   function normalizeTopicUrl(url) {
+    const parsed = parseTopicPath(url.pathname);
+
     url.hash = "";
     url.search = "";
-    url.pathname = stripTrailingSlash(url.pathname);
+    url.pathname = parsed?.topicPath || stripTrailingSlash(url.pathname);
 
     return url.toString().replace(/\/$/, "");
   }
@@ -1490,10 +1862,15 @@
   function loadSettings() {
     try {
       const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
-      const settings = {
-        ...DEFAULT_SETTINGS,
-        ...(saved && typeof saved === "object" ? saved : {})
-      };
+      const settings = { ...DEFAULT_SETTINGS };
+
+      if (saved && typeof saved === "object") {
+        if (saved.drawerWidth in DRAWER_WIDTHS || saved.drawerWidth === "custom") {
+          settings.drawerWidth = saved.drawerWidth;
+        }
+
+        settings.drawerWidthCustom = clampDrawerWidth(saved.drawerWidthCustom);
+      }
 
       if (!(settings.drawerWidth in DRAWER_WIDTHS) && settings.drawerWidth !== "custom") {
         settings.drawerWidth = DEFAULT_SETTINGS.drawerWidth;
@@ -1508,6 +1885,56 @@
 
   function saveSettings() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+  }
+
+  function resetReplyComposer() {
+    if (state.replyTextarea) {
+      state.replyTextarea.value = "";
+      state.replyTextarea.placeholder = "写点什么... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送";
+    }
+
+    if (state.replyStatus) {
+      state.replyStatus.textContent = "";
+    }
+
+    state.isReplySubmitting = false;
+    setReplyPanelOpen(false);
+    syncReplyUI();
+  }
+
+  function syncReplyUI() {
+    const hasTopic = Boolean(state.currentTopic?.id);
+    const isTargetedReply = Number.isFinite(state.replyTargetPostNumber);
+
+    if (state.replyButton) {
+      state.replyButton.hidden = !Boolean(state.currentUrl);
+      state.replyButton.disabled = !hasTopic || state.isReplySubmitting;
+      state.replyButton.classList.toggle("is-disabled", !hasTopic || state.isReplySubmitting);
+    }
+
+    if (state.replyTextarea) {
+      state.replyTextarea.disabled = !hasTopic || state.isReplySubmitting;
+      if (hasTopic) {
+        state.replyTextarea.placeholder = isTargetedReply
+          ? `回复 ${state.replyTargetLabel}... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送`
+          : `回复《${state.currentTopic.title || state.currentFallbackTitle || "当前主题"}》... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送`;
+      }
+    }
+
+    if (state.replyPanelTitle) {
+      state.replyPanelTitle.textContent = isTargetedReply
+        ? `回复 ${state.replyTargetLabel}`
+        : "回复主题";
+    }
+
+    if (state.replySubmitButton) {
+      state.replySubmitButton.disabled = !hasTopic || state.isReplySubmitting;
+      state.replySubmitButton.textContent = state.isReplySubmitting ? "发送中..." : "发送回复";
+    }
+
+    if (state.replyCancelButton) {
+      state.replyCancelButton.disabled = state.isReplySubmitting;
+    }
   }
 
   function syncSettingsUI() {
@@ -1554,21 +1981,15 @@
     }
 
     const key = target.dataset.setting;
-    if (!key || !(key in state.settings)) {
+    if (key !== "drawerWidth") {
       return;
     }
 
-    state.settings[key] = target.value;
+    state.settings.drawerWidth = target.value;
     saveSettings();
 
-    if (key === "drawerWidth") {
-      applyDrawerWidth();
-      syncSettingsUI();
-      setSettingsPanelOpen(false);
-      return;
-    }
-
-    refreshCurrentView();
+    applyDrawerWidth();
+    syncSettingsUI();
     setSettingsPanelOpen(false);
   }
 
@@ -1577,7 +1998,6 @@
     syncSettingsUI();
     saveSettings();
     applyDrawerWidth();
-    refreshCurrentView();
     setSettingsPanelOpen(false);
   }
 
@@ -1592,53 +2012,6 @@
     );
 
     updateSettingsPopoverPosition();
-  }
-
-  function setIframeModeEnabled(enabled) {
-    state.root?.classList.toggle(IFRAME_MODE_CLASS, enabled);
-    document.body.classList.toggle(PAGE_IFRAME_OPEN_CLASS, Boolean(state.currentUrl) && enabled);
-  }
-
-  function refreshCurrentView() {
-    if (!state.currentUrl) {
-      return;
-    }
-
-    if (state.settings.previewMode === "iframe") {
-      if (state.abortController) {
-        state.abortController.abort();
-        state.abortController = null;
-        if (!state.currentViewTracked) {
-          state.currentTrackRequest = null;
-          state.currentTrackRequestKey = "";
-        }
-      }
-
-      if (!state.currentViewTracked) {
-        ensureTrackedTopicVisit(state.currentUrl, state.currentTopicIdHint).catch(() => {});
-      }
-
-      renderIframeFallback(state.currentUrl, state.currentFallbackTitle, null, true);
-      return;
-    }
-
-    if (state.currentTopic) {
-      const targetSpec = getTopicTargetSpec(state.currentUrl, state.currentTopicIdHint);
-      const needsTargetReload = shouldFetchTargetedTopic(state.currentTopic, targetSpec)
-        && !state.currentResolvedTargetPostNumber;
-      const needsLatestRepliesReload = shouldLoadLatestRepliesTopic(state.currentTopic, targetSpec)
-        && !state.currentLatestRepliesTopic;
-
-      if (!needsTargetReload && !needsLatestRepliesReload) {
-        renderTopic(state.currentTopic, state.currentUrl, state.currentFallbackTitle, state.currentResolvedTargetPostNumber, {
-          latestRepliesTopic: state.currentLatestRepliesTopic,
-          targetSpec
-        });
-        return;
-      }
-    }
-
-    loadTopic(state.currentUrl, state.currentFallbackTitle, state.currentTopicIdHint);
   }
 
   function clampDrawerWidth(value) {
