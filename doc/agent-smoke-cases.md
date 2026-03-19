@@ -31,6 +31,18 @@ agent-browser --cdp 9222 get url
 agent-browser --cdp 9222 snapshot -i
 ```
 
+### 批量执行
+
+```bash
+bash scripts/agent-smoke.sh --cdp-port 9222
+```
+
+指定用例：
+
+```bash
+bash scripts/agent-smoke.sh --cdp-port 9222 --cases AGENT-CHROME-001,AGENT-CHROME-006
+```
+
 ## 2. 用例
 
 ### AGENT-CHROME-001：列表点击打开抽屉
@@ -137,6 +149,9 @@ agent-browser --cdp 9222 snapshot -i
 范围：
 楼主标记
 
+状态：
+当前不在默认批量脚本中
+
 建议目标：
 优先选楼主有多次回复的公告帖
 
@@ -154,6 +169,9 @@ agent-browser --cdp 9222 snapshot -i
 
 范围：
 `#4` 提示条固定与点击行为
+
+状态：
+批量脚本中为“存在则执行，否则 `SKIP`”
 
 步骤：
 

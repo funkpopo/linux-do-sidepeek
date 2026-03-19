@@ -76,6 +76,28 @@ agent-browser --cdp 9222 get url
 agent-browser --cdp 9222 snapshot -i
 ```
 
+当前可执行脚本：
+
+```bash
+bash scripts/agent-smoke.sh --cdp-port 9222
+```
+
+默认覆盖：
+
+1. `AGENT-CHROME-001`
+2. `AGENT-CHROME-002`
+3. `AGENT-CHROME-003`
+4. `AGENT-CHROME-004`
+5. `AGENT-CHROME-005`
+6. `AGENT-CHROME-006`
+7. `AGENT-CHROME-008`
+8. `AGENT-CHROME-009`
+
+说明：
+
+1. `AGENT-CHROME-008` 在页面不存在“查看 x 个新的或更新的话题”提示条时会记为 `SKIP`
+2. `AGENT-CHROME-007` 目前仍保留在用例库里做定向执行，不进入默认批量脚本
+
 执行规则：
 
 1. 高风险交互改动至少跑相关的 2 到 3 条 agent 用例
@@ -137,6 +159,7 @@ Tier 1
 - bash scripts/check-release-artifacts.sh /tmp/linux-do-sidepeek-dist/linux-do-sidepeek-0.0.0-local-chrome.zip /tmp/linux-do-sidepeek-dist/linux-do-sidepeek-0.0.0-local-firefox-unsigned.xpi
 
 Tier 2
+- bash scripts/agent-smoke.sh --cdp-port 9222
 - AGENT-CHROME-001 PASS
 - AGENT-CHROME-005 PASS
 - AGENT-CHROME-006 PASS

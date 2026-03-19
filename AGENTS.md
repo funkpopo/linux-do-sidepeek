@@ -22,6 +22,7 @@ linux-do-sidepeek/
 │   └── testing-standard.md
 ├── manifest.json
 ├── scripts/
+│   ├── agent-smoke.sh
 │   ├── build-release-artifacts.sh
 │   ├── check-release-artifacts.sh
 │   └── check.sh
@@ -87,11 +88,13 @@ bash scripts/check.sh
 ```bash
 bash scripts/build-release-artifacts.sh v0.0.0-local /tmp/linux-do-sidepeek-dist
 bash scripts/check-release-artifacts.sh /tmp/linux-do-sidepeek-dist/linux-do-sidepeek-0.0.0-local-chrome.zip /tmp/linux-do-sidepeek-dist/linux-do-sidepeek-0.0.0-local-firefox-unsigned.xpi
+bash scripts/agent-smoke.sh --cdp-port 9222
 ```
 执行内容：
 - 验证 Chrome ZIP 与 Firefox XPI 能被正常产出
 - 验证产物中包含 `manifest.json`、`src/content.js`、`src/content.css`
 - 验证 Firefox 产物中的 `browser_specific_settings.gecko.id` 存在
+- 验证默认批量 agent Chrome smoke 用例
 
 对应 CI：
 - `check.yml` 会在 `pull_request` 和 `main` 分支 `push` 时执行静态检查和打包 smoke
