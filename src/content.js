@@ -871,6 +871,7 @@
 
     const visiblePosts = viewModel.posts;
     const basePosts = topic?.post_stream?.posts || [];
+    const topicOwner = getTopicOwnerIdentity(topic);
 
     if (!state.hasShownPreviewNotice) {
       const notice = document.createElement("div");
@@ -905,7 +906,7 @@
     postList.className = "ld-topic-post-list";
 
     for (const post of visiblePosts) {
-      postList.appendChild(buildPostCard(post));
+      postList.appendChild(buildPostCard(post, topicOwner));
     }
 
     wrapper.appendChild(postList);
@@ -1024,7 +1025,7 @@
     return tag.name || tag.id || tag.text || tag.label || "";
   }
 
-  function buildPostCard(post) {
+  function buildPostCard(post, topicOwner = null) {
     const article = document.createElement("article");
     article.className = "ld-post-card";
     if (typeof post.post_number === "number") {
@@ -1054,6 +1055,11 @@
     username.textContent = post.username ? `@${post.username}` : "";
 
     authorRow.append(displayName, username);
+
+    const topicOwnerBadge = buildTopicOwnerBadge(post, topicOwner);
+    if (topicOwnerBadge) {
+      authorRow.appendChild(topicOwnerBadge);
+    }
 
     const meta = document.createElement("div");
     meta.className = "ld-post-meta";
@@ -2231,11 +2237,63 @@
     return new URL(template.replace("{size}", "96"), location.origin).toString();
   }
 
+  function normalizeUsername(value) {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
+  }
+
+  function getTopicOwnerIdentity(topic) {
+    const createdBy = topic?.created_by && typeof topic.created_by === "object"
+      ? topic.created_by
+      : (topic?.details?.created_by && typeof topic.details.created_by === "object" ? topic.details.created_by : null);
+
+    if (!createdBy) {
+      return null;
+    }
+
+    const displayUsername = typeof createdBy.username === "string" ? createdBy.username.trim() : "";
+    const normalizedUsername = normalizeUsername(createdBy.username);
+    const userId = Number.isFinite(createdBy.id) ? Number(createdBy.id) : null;
+
+    if (!displayUsername && userId === null) {
+      return null;
+    }
+
+    return { displayUsername, normalizedUsername, userId };
+  }
+
+  function isTopicOwnerPost(post, topicOwner) {
+    if (!post || typeof post !== "object" || !topicOwner) {
+      return false;
+    }
+
+    const postUserId = Number.isFinite(post.user_id) ? Number(post.user_id) : null;
+    if (topicOwner.userId !== null && postUserId !== null && topicOwner.userId === postUserId) {
+      return true;
+    }
+
+    const postUsername = normalizeUsername(post.username);
+    return Boolean(topicOwner.normalizedUsername && postUsername && topicOwner.normalizedUsername === postUsername);
+  }
+
+  function buildTopicOwnerBadge(post, topicOwner) {
+    if (!isTopicOwnerPost(post, topicOwner)) {
+      return null;
+    }
+
+    const badge = document.createElement("span");
+    badge.className = "ld-post-topic-owner-badge";
+    badge.textContent = "Topic Owner";
+    badge.title = "楼主";
+    badge.setAttribute("aria-label", "楼主");
+    return badge;
+  }
+
   function buildTopicMeta(topic, loadedPostCount) {
     const parts = [];
 
-    if (topic.created_by?.username) {
-      parts.push(`楼主 @${topic.created_by.username}`);
+    const topicOwner = getTopicOwnerIdentity(topic);
+    if (topicOwner?.displayUsername) {
+      parts.push(`楼主 @${topicOwner.displayUsername}`);
     }
 
     if (topic.created_at) {

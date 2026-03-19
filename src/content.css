@@ -560,6 +560,19 @@ body.ld-drawer-page-open #ld-drawer-root {
   gap: 8px;
 }
 
+#ld-drawer-root .ld-post-topic-owner-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tertiary, #3b82f6) 12%, transparent);
+  color: var(--tertiary, #3b82f6);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 #ld-drawer-root .ld-post-username,
 #ld-drawer-root .ld-post-meta {
   color: var(--primary-medium, rgba(15, 23, 42, 0.64));
