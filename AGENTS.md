@@ -6,11 +6,20 @@
 - 关键入口：`manifest.json`、`src/content.js`、`src/content.css`
 - 运行方式：Chrome 直接加载仓库目录
 - 当前没有 `package.json`、Node 构建器、Lint 配置或自动化测试框架
+- 当前提供最小静态检查与打包产物验证脚本，供本地和 GitHub Actions 复用
 
 ## 仓库结构
 ```text
 linux-do-sidepeek/
+├── .github/
+│   └── workflows/
+│       ├── check.yml
+│       └── release.yml
 ├── manifest.json
+├── scripts/
+│   ├── build-release-artifacts.sh
+│   ├── check-release-artifacts.sh
+│   └── check.sh
 ├── src/
 │   ├── content.js
 │   └── content.css
@@ -35,10 +44,13 @@ linux-do-sidepeek/
 ## Build / Lint / Test Commands
 
 ### Build
-当前没有 build 步骤。
+当前可执行的发布产物构建命令：
 ```bash
-# N/A - no build command exists
+bash scripts/build-release-artifacts.sh v0.0.0-local /tmp/linux-do-sidepeek-dist
 ```
+执行内容：
+- 产出 Chrome ZIP
+- 产出 Firefox 未签名 XPI
 
 ### Run Extension
 ```bash
@@ -53,16 +65,32 @@ linux-do-sidepeek/
 ```bash
 # N/A - no eslint / prettier / stylelint command exists
 ```
-建议的实际检查方式：
-- 人工代码审查
-- Chrome DevTools Console 报错检查
-- 在真实页面上做交互回归
+当前最小静态检查命令：
+```bash
+bash scripts/check.sh
+```
+执行内容：
+- `node --check src/content.js`
+- `jq . manifest.json >/dev/null`
 
 ### Test
 当前没有自动化测试命令。
 ```bash
 # N/A - no npm test / pnpm test / vitest / jest command exists
 ```
+当前可执行的基础验证命令：
+```bash
+bash scripts/build-release-artifacts.sh v0.0.0-local /tmp/linux-do-sidepeek-dist
+bash scripts/check-release-artifacts.sh /tmp/linux-do-sidepeek-dist/linux-do-sidepeek-0.0.0-local-chrome.zip /tmp/linux-do-sidepeek-dist/linux-do-sidepeek-0.0.0-local-firefox-unsigned.xpi
+```
+执行内容：
+- 验证 Chrome ZIP 与 Firefox XPI 能被正常产出
+- 验证产物中包含 `manifest.json`、`src/content.js`、`src/content.css`
+- 验证 Firefox 产物中的 `browser_specific_settings.gecko.id` 存在
+
+对应 CI：
+- `check.yml` 会在 `pull_request` 和 `main` 分支 `push` 时执行静态检查和打包 smoke
+- `release.yml` 会在 tag 发布时执行同一套静态检查，并在发布前验证产物结构
 
 ### Single Test
 当前不适用：仓库中没有测试框架，也没有测试文件，因此不存在运行单个测试文件或单个测试用例的命令。
