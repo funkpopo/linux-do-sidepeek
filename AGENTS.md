@@ -15,6 +15,11 @@ linux-do-sidepeek/
 │   └── workflows/
 │       ├── check.yml
 │       └── release.yml
+├── doc/
+│   ├── agent-smoke-cases.md
+│   ├── latest-replies-reverse-pagination.md
+│   ├── linux-do-rules.md
+│   └── testing-standard.md
 ├── manifest.json
 ├── scripts/
 │   ├── build-release-artifacts.sh
@@ -92,6 +97,10 @@ bash scripts/check-release-artifacts.sh /tmp/linux-do-sidepeek-dist/linux-do-sid
 - `check.yml` 会在 `pull_request` 和 `main` 分支 `push` 时执行静态检查和打包 smoke
 - `release.yml` 会在 tag 发布时执行同一套静态检查，并在发布前验证产物结构
 
+测试文档：
+- 分层与 PR 证据格式见 `doc/testing-standard.md`
+- agent Chrome 用例库见 `doc/agent-smoke-cases.md`
+
 ### Single Test
 当前不适用：仓库中没有测试框架，也没有测试文件，因此不存在运行单个测试文件或单个测试用例的命令。
 ```bash
@@ -115,6 +124,10 @@ bash scripts/check-release-artifacts.sh /tmp/linux-do-sidepeek-dist/linux-do-sid
 9. 验证 `Escape` 能关闭设置层、图片预览和抽屉
 10. 验证窄屏，尤其 `<= 720px`，布局不破版
 11. 打开 Chrome DevTools，确认 Console 无新增错误
+
+补充规则：
+- 修复用户已发现的 bug 时，更新 `doc/agent-smoke-cases.md` 中对应回归用例
+- 优先把稳定断言写入 agent 用例库，再考虑升级成真正脚本化测试
 
 ## 架构摘要
 - `manifest.json`：声明 MV3 扩展信息、匹配站点与 content script 注入配置
