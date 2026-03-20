@@ -674,6 +674,78 @@
     white-space: nowrap;
   }
 
+  /* reply-to-tab: chip shown above post body when the post replies to a specific post */
+  #ld-drawer-root .ld-reply-to-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 16px 8px;
+    padding: 3px 10px;
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.10));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary-low, rgba(15, 23, 42, 0.06)) 60%, transparent);
+    color: var(--primary-medium, rgba(15, 23, 42, 0.60));
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+    max-width: calc(100% - 32px);
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  #ld-drawer-root .ld-reply-to-tab:hover {
+    border-color: var(--tertiary, #3b82f6);
+    color: var(--tertiary, #3b82f6);
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 8%, transparent);
+  }
+
+  #ld-drawer-root .ld-reply-to-tab-icon {
+    width: 12px;
+    height: 12px;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  #ld-drawer-root .ld-reply-to-tab-icon svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  #ld-drawer-root .ld-reply-to-tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* post-infos: stats row (reads, likes, replies) shown below post body */
+  #ld-drawer-root .ld-post-infos {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px 10px;
+    flex-wrap: wrap;
+  }
+
+  #ld-drawer-root .ld-post-info-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--primary-medium, rgba(15, 23, 42, 0.50));
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  #ld-drawer-root .ld-post-info-icon {
+    width: 13px;
+    height: 13px;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  #ld-drawer-root .ld-post-info-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
   /* Small icon-only buttons: copy link, bookmark, flag */
   #ld-drawer-root .ld-post-icon-btn {
     display: inline-flex;
@@ -2276,6 +2348,8 @@
       authorBlock.append(authorRow, meta);
       header.append(avatar, authorBlock);
 
+      const replyToTab = buildReplyToTab(post);
+
       const body = document.createElement("div");
       body.className = "ld-post-body cooked";
       body.innerHTML = post.cooked || "";
@@ -2284,6 +2358,8 @@
         link.target = "_blank";
         link.rel = "noopener noreferrer";
       }
+
+      const postInfos = buildPostInfos(post);
 
       const actions = document.createElement("div");
       actions.className = "ld-post-actions";
@@ -2411,7 +2487,16 @@
 
       actionsRight.append(reactWrap, replyButton);
       actions.append(actionsLeft, actionsRight);
-      article.append(header, body, actions);
+
+      if (replyToTab) {
+        article.append(header, replyToTab, body);
+      } else {
+        article.append(header, body);
+      }
+      if (postInfos) {
+        article.appendChild(postInfos);
+      }
+      article.appendChild(actions);
       return article;
     }
 
@@ -4158,19 +4243,101 @@
       return parts.join(" · ");
     }
 
+    function buildReplyToTab(post) {
+      const replyPostNum = post.reply_to_post_number;
+      if (!Number.isFinite(replyPostNum) || replyPostNum === post.post_number) {
+        return null;
+      }
+
+      const replyUser = post.reply_to_user;
+      const displayName = replyUser?.username ? `@${replyUser.username}` : `第 ${replyPostNum} 楼`;
+
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "ld-reply-to-tab";
+      tab.setAttribute("aria-label", `跳转到被回复的帖子：${displayName}`);
+      tab.title = `跳转到第 ${replyPostNum} 楼`;
+
+      const icon = document.createElement("span");
+      icon.className = "ld-reply-to-tab-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`;
+
+      const label = document.createElement("span");
+      label.className = "ld-reply-to-tab-label";
+      label.textContent = displayName;
+
+      tab.append(icon, label);
+      tab.addEventListener("click", (e) => {
+        e.stopPropagation();
+        scrollTopicViewToTargetPost(replyPostNum);
+      });
+
+      return tab;
+    }
+
+    function buildPostInfos(post) {
+      const items = [];
+
+      if (typeof post.reads === "number" && post.reads > 0) {
+        items.push({
+          icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+          count: post.reads,
+          label: "阅读"
+        });
+      }
+
+      const likeCount = typeof post.like_count === "number"
+        ? post.like_count
+        : (Array.isArray(post.reactions) ? post.reactions.reduce((s, r) => s + (r.count || 0), 0) : 0);
+      if (likeCount > 0) {
+        items.push({
+          icon: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+          count: likeCount,
+          label: "点赞"
+        });
+      }
+
+      if (typeof post.reply_count === "number" && post.reply_count > 0) {
+        items.push({
+          icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
+          count: post.reply_count,
+          label: "回复"
+        });
+      }
+
+      if (!items.length) {
+        return null;
+      }
+
+      const infos = document.createElement("div");
+      infos.className = "ld-post-infos";
+
+      for (const item of items) {
+        const span = document.createElement("span");
+        span.className = "ld-post-info-item";
+        span.setAttribute("title", item.label);
+
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "ld-post-info-icon";
+        iconSpan.setAttribute("aria-hidden", "true");
+        iconSpan.innerHTML = item.icon;
+
+        const countSpan = document.createElement("span");
+        countSpan.textContent = String(item.count);
+
+        span.append(iconSpan, countSpan);
+        infos.appendChild(span);
+      }
+
+      return infos;
+    }
+
     function buildPostMeta(post) {
       const parts = [];
 
       if (post.created_at) {
         parts.push(formatDate(post.created_at));
-      }
-
-      if (typeof post.reads === "number") {
-        parts.push(`${post.reads} 阅读`);
-      }
-
-      if (typeof post.reply_count === "number" && post.reply_count > 0) {
-        parts.push(`${post.reply_count} 回复`);
       }
 
       return parts.join(" · ");
