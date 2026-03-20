@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.5.0-fix1
+// @version      0.5.1
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -627,8 +627,17 @@
 
   #ld-drawer-root .ld-post-actions {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
     padding: 0 16px 14px;
+  }
+
+  #ld-drawer-root .ld-post-actions-left,
+  #ld-drawer-root .ld-post-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   #ld-drawer-root .ld-post-reply-button {
@@ -663,6 +672,226 @@
 
   #ld-drawer-root .ld-post-reply-button-label {
     white-space: nowrap;
+  }
+
+  /* Small icon-only buttons: copy link, bookmark, flag */
+  #ld-drawer-root .ld-post-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--primary-medium, rgba(15, 23, 42, 0.55));
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+
+  #ld-drawer-root .ld-post-icon-btn svg {
+    width: 15px;
+    height: 15px;
+    display: block;
+  }
+
+  #ld-drawer-root .ld-post-icon-btn:hover {
+    background: color-mix(in srgb, var(--primary-low, rgba(15, 23, 42, 0.08)) 50%, transparent);
+    color: var(--primary, #1f2937);
+  }
+
+  #ld-drawer-root .ld-post-icon-btn--bookmarked {
+    color: var(--tertiary, #3b82f6);
+  }
+
+  #ld-drawer-root .ld-post-icon-btn--bookmarked:hover {
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 12%, transparent);
+    color: var(--tertiary, #3b82f6);
+  }
+
+  #ld-drawer-root .ld-post-icon-btn--flag:hover {
+    color: var(--danger, #e45735);
+    background: color-mix(in srgb, var(--danger, #e45735) 10%, transparent);
+  }
+
+  /* Reactions button (replaces old like button) */
+  #ld-drawer-root .ld-post-react-wrap {
+    position: relative;
+  }
+
+  #ld-drawer-root .ld-post-react-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
+    background: color-mix(in srgb, var(--secondary, #fff) 94%, transparent);
+    color: var(--primary-medium, rgba(15, 23, 42, 0.72));
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+
+  #ld-drawer-root .ld-post-react-btn:hover {
+    border-color: var(--love, #e45735);
+    color: var(--love, #e45735);
+  }
+
+  #ld-drawer-root .ld-post-react-btn--reacted {
+    color: var(--love, #e45735);
+    border-color: var(--love, #e45735);
+    background: color-mix(in srgb, var(--love, #e45735) 10%, var(--secondary, #fff));
+  }
+
+  #ld-drawer-root .ld-post-react-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  #ld-drawer-root .ld-post-react-btn-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #ld-drawer-root .ld-post-react-btn-icon img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+  }
+
+  #ld-drawer-root .ld-post-react-btn-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  #ld-drawer-root .ld-post-react-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Reactions hover popover */
+  #ld-drawer-root .ld-reactions-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    gap: 2px;
+    padding: 6px 8px;
+    background: var(--secondary, #fff);
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.14);
+    z-index: 20;
+    white-space: nowrap;
+  }
+
+  #ld-drawer-root .ld-reactions-popover[hidden] {
+    display: none !important;
+  }
+
+  #ld-drawer-root .ld-reaction-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 8px;
+    padding: 5px 6px;
+    cursor: pointer;
+    transition: background 0.12s, transform 0.12s;
+    line-height: 1;
+  }
+
+  #ld-drawer-root .ld-reaction-btn:hover {
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 12%, transparent);
+    transform: scale(1.25);
+  }
+
+  #ld-drawer-root .ld-reaction-btn--active {
+    background: color-mix(in srgb, var(--love, #e45735) 14%, transparent);
+    border-color: color-mix(in srgb, var(--love, #e45735) 40%, transparent);
+  }
+
+  #ld-drawer-root .ld-reaction-btn--active:hover {
+    background: color-mix(in srgb, var(--love, #e45735) 22%, transparent);
+  }
+
+  #ld-drawer-root .ld-reaction-btn img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    display: block;
+  }
+
+  #ld-drawer-root .ld-reaction-btn-count {
+    font-size: 10px;
+    color: var(--primary-medium, rgba(15, 23, 42, 0.6));
+    min-width: 14px;
+    text-align: center;
+  }
+
+  /* Flag popover */
+  #ld-drawer-root .ld-flag-wrap {
+    position: relative;
+  }
+
+  #ld-drawer-root .ld-flag-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    min-width: 190px;
+    background: var(--secondary, #fff);
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.14);
+    z-index: 20;
+    overflow: hidden;
+  }
+
+  #ld-drawer-root .ld-flag-popover[hidden] {
+    display: none !important;
+  }
+
+  #ld-drawer-root .ld-flag-option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 10px 13px;
+    border: none;
+    background: transparent;
+    color: var(--primary, #1f2937);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+
+  #ld-drawer-root .ld-flag-option:hover {
+    background: color-mix(in srgb, var(--primary-low, rgba(15, 23, 42, 0.08)) 80%, transparent);
+  }
+
+  #ld-drawer-root .ld-flag-option svg {
+    width: 15px;
+    height: 15px;
+    color: var(--primary-medium, rgba(15, 23, 42, 0.55));
+    flex-shrink: 0;
+  }
+
+  @keyframes ld-popover-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  #ld-drawer-root .ld-reactions-popover:not([hidden]),
+  #ld-drawer-root .ld-flag-popover:not([hidden]) {
+    animation: ld-popover-in 0.12s ease;
   }
 
   #ld-drawer-root .ld-post-body > :first-child {
@@ -1072,7 +1301,8 @@
       topicTrackerSyncQueued: false,
       topicTrackerRefreshTimer: 0,
       topicTrackerRefreshStartedAt: 0,
-      topicTrackerRefreshLoadingObserved: false
+      topicTrackerRefreshLoadingObserved: false,
+      availableReactions: null
     };
 
     function init() {
@@ -1275,6 +1505,10 @@
 
       if (!state.replyPanel?.hidden && !target.closest(".ld-drawer-reply-panel") && !target.closest(".ld-drawer-reply-fab")) {
         setReplyPanelOpen(false);
+      }
+
+      if (!target.closest(".ld-flag-wrap") && !target.closest(".ld-post-react-wrap")) {
+        closeAllPopovers();
       }
 
       if (handleTopicTrackerClick(target)) {
@@ -2054,6 +2288,113 @@
       const actions = document.createElement("div");
       actions.className = "ld-post-actions";
 
+      // --- Left group: copy link, bookmark, flag ---
+      const actionsLeft = document.createElement("div");
+      actionsLeft.className = "ld-post-actions-left";
+
+      const copyLinkBtn = document.createElement("button");
+      copyLinkBtn.type = "button";
+      copyLinkBtn.className = "ld-post-icon-btn";
+      copyLinkBtn.setAttribute("aria-label", "复制帖子链接");
+      copyLinkBtn.title = "将此帖子的链接复制到剪贴板";
+      copyLinkBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+      copyLinkBtn.addEventListener("click", () => handleCopyPostLink(copyLinkBtn, post));
+
+      const isBookmarked = post.bookmarked === true;
+      const bookmarkBtn = document.createElement("button");
+      bookmarkBtn.type = "button";
+      bookmarkBtn.className = "ld-post-icon-btn" + (isBookmarked ? " ld-post-icon-btn--bookmarked" : "");
+      bookmarkBtn.setAttribute("aria-label", isBookmarked ? "取消书签" : "添加书签");
+      bookmarkBtn.title = "将此帖子加入书签";
+      bookmarkBtn.innerHTML = isBookmarked
+        ? `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v17l-7-3.5L5 21V4z"/></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v17l-7-3.5L5 21V4z"/></svg>`;
+      bookmarkBtn.addEventListener("click", () => handlePostBookmark(bookmarkBtn, post));
+
+      const flagWrap = document.createElement("div");
+      flagWrap.className = "ld-flag-wrap";
+      const flagBtn = document.createElement("button");
+      flagBtn.type = "button";
+      flagBtn.className = "ld-post-icon-btn ld-post-icon-btn--flag";
+      flagBtn.setAttribute("aria-label", "举报此帖子");
+      flagBtn.title = "以私密方式举报此帖子以引起注意，或发送一个关于它的个人消息";
+      flagBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+      const flagPopover = buildFlagPopover(post);
+      flagPopover.setAttribute("hidden", "");
+      flagBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isHidden = flagPopover.hasAttribute("hidden");
+        closeAllPopovers();
+        if (isHidden) {
+          flagPopover.removeAttribute("hidden");
+        }
+      });
+      flagWrap.append(flagBtn, flagPopover);
+      actionsLeft.append(copyLinkBtn, bookmarkBtn, flagWrap);
+
+      // --- Right group: reactions, reply ---
+      const actionsRight = document.createElement("div");
+      actionsRight.className = "ld-post-actions-right";
+
+      const reactWrap = document.createElement("div");
+      reactWrap.className = "ld-post-react-wrap";
+
+      const postReactions = Array.isArray(post.reactions) ? post.reactions : [];
+      const likeAction = Array.isArray(post.actions_summary)
+        ? post.actions_summary.find((a) => a.id === 2)
+        : null;
+      const hasReacted = postReactions.some((r) => r.reacted === true) || likeAction?.acted === true;
+      const reactCount = postReactions.reduce((sum, r) => sum + (r.count || 0), 0)
+        || post.like_count
+        || likeAction?.count
+        || 0;
+
+      const reactBtn = document.createElement("button");
+      reactBtn.type = "button";
+      reactBtn.className = "ld-post-react-btn" + (hasReacted ? " ld-post-react-btn--reacted" : "");
+      reactBtn.setAttribute("aria-label", hasReacted ? "取消反应" : "添加反应");
+      reactBtn.innerHTML = `
+        <span class="ld-post-react-btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+          </svg>
+        </span>
+        ${reactCount > 0 ? `<span class="ld-post-react-count">${reactCount}</span>` : ""}
+      `;
+
+      const reactionsPopover = document.createElement("div");
+      reactionsPopover.className = "ld-reactions-popover";
+      reactionsPopover.setAttribute("hidden", "");
+
+      let reactHideTimer = null;
+
+      function showReactionsPopover() {
+        clearTimeout(reactHideTimer);
+        closeAllPopovers();
+        reactionsPopover.removeAttribute("hidden");
+        if (!reactionsPopover.dataset.loaded) {
+          reactionsPopover.dataset.loaded = "1";
+          populateReactionsPopover(reactionsPopover, post, reactBtn);
+        }
+      }
+
+      function hideReactionsPopoverDelayed() {
+        reactHideTimer = setTimeout(() => {
+          reactionsPopover.setAttribute("hidden", "");
+        }, 250);
+      }
+
+      reactWrap.addEventListener("mouseenter", showReactionsPopover);
+      reactWrap.addEventListener("mouseleave", hideReactionsPopoverDelayed);
+      reactionsPopover.addEventListener("mouseenter", () => clearTimeout(reactHideTimer));
+      reactionsPopover.addEventListener("mouseleave", hideReactionsPopoverDelayed);
+      reactBtn.addEventListener("click", () => {
+        reactionsPopover.setAttribute("hidden", "");
+        handlePostReact(reactBtn, post, "heart", reactionsPopover);
+      });
+
+      reactWrap.append(reactBtn, reactionsPopover);
+
       const replyButton = document.createElement("button");
       replyButton.type = "button";
       replyButton.className = "ld-post-reply-button";
@@ -2068,7 +2409,8 @@
       `;
       replyButton.addEventListener("click", () => openReplyPanelForPost(post));
 
-      actions.appendChild(replyButton);
+      actionsRight.append(reactWrap, replyButton);
+      actions.append(actionsLeft, actionsRight);
       article.append(header, body, actions);
       return article;
     }
@@ -2896,6 +3238,476 @@
       }
 
       return data;
+    }
+
+    async function populateReactionsPopover(popoverEl, post, reactBtn) {
+      const available = await fetchAvailableReactions();
+      const reactions = Array.isArray(post.reactions) ? post.reactions : [];
+
+      popoverEl.replaceChildren();
+
+      for (const r of available) {
+        const existing = reactions.find((rx) => rx.id === r.id);
+        const count = existing?.count || 0;
+        const isActive = existing?.reacted === true
+          || (r.id === "heart" && (post.actions_summary?.find((a) => a.id === 2)?.acted === true));
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "ld-reaction-btn" + (isActive ? " ld-reaction-btn--active" : "");
+        btn.setAttribute("aria-label", r.id + (count > 0 ? ` (${count})` : ""));
+        btn.title = r.id;
+
+        const img = document.createElement("img");
+        img.alt = `:${r.id}:`;
+        img.loading = "lazy";
+        img.src = buildReactionEmojiSrc(r.id);
+        img.onerror = () => {
+          img.onerror = null;
+          btn.hidden = true;
+          btn.style.display = "none";
+        };
+
+        const countEl = document.createElement("span");
+        countEl.className = "ld-reaction-btn-count";
+        countEl.textContent = count > 0 ? String(count) : "";
+
+        btn.append(img, countEl);
+        btn.addEventListener("click", () => {
+          popoverEl.setAttribute("hidden", "");
+          handlePostReact(reactBtn, post, r.id, popoverEl);
+        });
+
+        popoverEl.appendChild(btn);
+      }
+    }
+
+    async function fetchAvailableReactions() {
+      if (state.availableReactions) {
+        return state.availableReactions;
+      }
+
+      // 1. Read from Discourse's live Ember app (most reliable — TM @grant none runs in page context)
+      try {
+        const siteSettings = window.Discourse?.SiteSettings;
+        if (siteSettings) {
+          const enabledStr = siteSettings.discourse_reactions_enabled_reactions;
+          if (typeof enabledStr === "string" && enabledStr.trim()) {
+            const ids = enabledStr.split("|").map((s) => s.trim()).filter(Boolean);
+            if (ids.length > 0) {
+              state.availableReactions = ids.map((id) => ({ id, type: "emoji" }));
+              return state.availableReactions;
+            }
+          }
+        }
+      } catch { /* ignore */ }
+
+      // 2. Try API endpoint (works when authenticated and endpoint exists)
+      try {
+        const res = await fetch(`${location.origin}/discourse-reactions/custom-reactions`, {
+          credentials: "include",
+          headers: { Accept: "application/json" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length) {
+            state.availableReactions = data;
+            return state.availableReactions;
+          }
+        }
+      } catch { /* ignore */ }
+
+      // 3. Reasonable fallback matching Discourse defaults
+      state.availableReactions = [
+        { id: "heart", type: "emoji" },
+        { id: "+1", type: "emoji" },
+        { id: "laughing", type: "emoji" },
+        { id: "open_mouth", type: "emoji" },
+        { id: "cry", type: "emoji" },
+        { id: "angry", type: "emoji" },
+        { id: "tada", type: "emoji" }
+      ];
+      return state.availableReactions;
+    }
+
+    const REACTION_URL_CACHE = {};
+
+    function buildReactionEmojiSrc(reactionId) {
+      if (REACTION_URL_CACHE[reactionId]) {
+        return REACTION_URL_CACHE[reactionId];
+      }
+
+      const set = (url) => {
+        if (url) REACTION_URL_CACHE[reactionId] = url;
+        return url;
+      };
+
+      // 1. Discourse AMD module for standard emojis (heart, +1, laughing, etc.)
+      try {
+        for (const loaderKey of ["require", "requirejs"]) {
+          const loader = window[loaderKey];
+          if (typeof loader !== "function") continue;
+          for (const modPath of ["discourse/lib/emoji", "discourse-common/utils/emoji"]) {
+            try {
+              const mod = loader(modPath);
+              if (!mod) continue;
+              const buildFn = mod.buildEmojiUrl || mod.default?.buildEmojiUrl
+                || mod.emojiUrlFor || mod.default?.emojiUrlFor;
+              if (typeof buildFn === "function") {
+                const url = buildFn(reactionId, window.Discourse?.SiteSettings);
+                if (url) return set(url);
+              }
+            } catch { /* ignore */ }
+          }
+          break;
+        }
+      } catch { /* ignore */ }
+
+      // 2. Standard emoji path fallback
+      const emojiSet = window.Discourse?.SiteSettings?.emoji_set || "twitter";
+      return `/images/emoji/${emojiSet}/${encodeURIComponent(reactionId)}.png`;
+    }
+
+    async function handlePostReact(reactBtn, post, reactionId, popoverEl) {
+      if (reactBtn.disabled) {
+        return;
+      }
+
+      reactBtn.disabled = true;
+
+      try {
+        const reactions = Array.isArray(post.reactions) ? post.reactions : [];
+        const existing = reactions.find((r) => r.id === reactionId);
+        const wasReacted = existing?.reacted === true;
+        const legacyLikeAction = !reactions.length && Array.isArray(post.actions_summary)
+          ? post.actions_summary.find((a) => a.id === 2)
+          : null;
+        const wasLegacyLiked = legacyLikeAction?.acted === true;
+        const isUndo = wasReacted || (reactionId === "heart" && wasLegacyLiked);
+
+        const updated = await performToggleReaction(post.id, reactionId);
+
+        if (Array.isArray(updated?.reactions)) {
+          post.reactions = updated.reactions;
+          post.like_count = updated.reactions.reduce((sum, r) => sum + (r.count || 0), 0);
+        } else {
+          if (!Array.isArray(post.reactions)) {
+            post.reactions = [];
+          }
+          if (isUndo) {
+            if (existing) {
+              existing.reacted = false;
+              existing.count = Math.max(0, (existing.count || 1) - 1);
+            }
+          } else {
+            if (existing) {
+              existing.reacted = true;
+              existing.count = (existing.count || 0) + 1;
+            } else {
+              post.reactions.push({ id: reactionId, type: "emoji", count: 1, reacted: true });
+            }
+          }
+          post.like_count = post.reactions.reduce((sum, r) => sum + (r.count || 0), 0);
+          if (legacyLikeAction) {
+            legacyLikeAction.acted = !wasLegacyLiked;
+            legacyLikeAction.count = Math.max(0, (legacyLikeAction.count || 0) + (isUndo ? -1 : 1));
+          }
+        }
+
+        const nowReacted = post.reactions?.some((r) => r.reacted) || false;
+        const newCount = post.like_count || 0;
+
+        reactBtn.classList.toggle("ld-post-react-btn--reacted", nowReacted);
+        reactBtn.setAttribute("aria-label", nowReacted ? "取消反应" : "添加反应");
+
+        let countEl = reactBtn.querySelector(".ld-post-react-count");
+        if (newCount > 0) {
+          if (countEl) {
+            countEl.textContent = String(newCount);
+          } else {
+            countEl = document.createElement("span");
+            countEl.className = "ld-post-react-count";
+            countEl.textContent = String(newCount);
+            reactBtn.appendChild(countEl);
+          }
+        } else if (countEl) {
+          countEl.remove();
+        }
+
+        if (popoverEl && !popoverEl.hasAttribute("hidden")) {
+          delete popoverEl.dataset.loaded;
+          populateReactionsPopover(popoverEl, post, reactBtn);
+        } else if (popoverEl) {
+          delete popoverEl.dataset.loaded;
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        reactBtn.disabled = false;
+      }
+    }
+
+    async function performToggleReaction(postId, reactionId) {
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("未找到 CSRF 令牌");
+      }
+
+      const response = await fetch(
+        `${location.origin}/discourse-reactions/posts/${postId}/custom-reactions/${encodeURIComponent(reactionId)}/toggle`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRF-Token": csrfToken
+          }
+        }
+      );
+
+      if (!response.ok) {
+        if (reactionId === "heart") {
+          return performLegacyLikeToggle(postId);
+        }
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          Array.isArray(data?.errors) && data.errors.length
+            ? data.errors.join("；")
+            : `反应失败：${response.status}`
+        );
+      }
+
+      return response.json().catch(() => null);
+    }
+
+    async function performLegacyLikeToggle(postId) {
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("未找到 CSRF 令牌");
+      }
+
+      const likeRes = await fetch(`${location.origin}/post_actions`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-Token": csrfToken
+        },
+        body: new URLSearchParams({ id: String(postId), post_action_type_id: "2", flag_topic: "false" })
+      });
+
+      if (likeRes.ok) {
+        return null;
+      }
+
+      const unlikeRes = await fetch(
+        `${location.origin}/post_actions/${postId}?post_action_type_id=2`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRF-Token": csrfToken
+          }
+        }
+      );
+
+      if (!unlikeRes.ok) {
+        throw new Error(`操作失败：${unlikeRes.status}`);
+      }
+
+      return null;
+    }
+
+    async function handleCopyPostLink(btn, post) {
+      const topicId = state.currentTopic?.id || post.topic_id;
+      const topicSlug = state.currentTopic?.slug || "";
+      const postNum = post.post_number;
+
+      const url = topicSlug
+        ? `${location.origin}/t/${topicSlug}/${topicId}/${postNum}`
+        : `${location.origin}/t/topic/${topicId}/${postNum}`;
+
+      try {
+        await navigator.clipboard.writeText(url);
+        const origHTML = btn.innerHTML;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+        setTimeout(() => {
+          btn.innerHTML = origHTML;
+        }, 1500);
+      } catch {
+        // silently ignore
+      }
+    }
+
+    async function handlePostBookmark(btn, post) {
+      if (btn.disabled) {
+        return;
+      }
+
+      btn.disabled = true;
+      const wasBookmarked = post.bookmarked === true;
+
+      try {
+        if (wasBookmarked && post.bookmark_id) {
+          await performDeleteBookmark(post.bookmark_id);
+          post.bookmarked = false;
+          post.bookmark_id = null;
+        } else {
+          const result = await performCreateBookmark(post.id);
+          post.bookmarked = true;
+          if (result?.id) {
+            post.bookmark_id = result.id;
+          }
+        }
+
+        const nowBookmarked = post.bookmarked === true;
+        btn.className = "ld-post-icon-btn" + (nowBookmarked ? " ld-post-icon-btn--bookmarked" : "");
+        btn.setAttribute("aria-label", nowBookmarked ? "取消书签" : "添加书签");
+        btn.innerHTML = nowBookmarked
+          ? `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v17l-7-3.5L5 21V4z"/></svg>`
+          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v17l-7-3.5L5 21V4z"/></svg>`;
+      } catch {
+        // silently ignore
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function performCreateBookmark(postId) {
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("未找到 CSRF 令牌");
+      }
+
+      const response = await fetch(`${location.origin}/bookmarks`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify({ bookmarkable_type: "Post", bookmarkable_id: postId })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.errors?.join("；") || `书签失败：${response.status}`);
+      }
+
+      return response.json().catch(() => null);
+    }
+
+    async function performDeleteBookmark(bookmarkId) {
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("未找到 CSRF 令牌");
+      }
+
+      const response = await fetch(`${location.origin}/bookmarks/${bookmarkId}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-Token": csrfToken
+        }
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.errors?.join("；") || `取消书签失败：${response.status}`);
+      }
+    }
+
+    function buildFlagPopover(post) {
+      const popover = document.createElement("div");
+      popover.className = "ld-flag-popover";
+      popover.setAttribute("role", "menu");
+
+      const flagOptions = [
+        {
+          id: 3,
+          label: "垃圾信息",
+          description: "此帖子是广告或垃圾内容",
+          icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`
+        },
+        {
+          id: 4,
+          label: "不当内容",
+          description: "此帖子包含令人反感的内容",
+          icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+        },
+        {
+          id: 7,
+          label: "需要版主关注",
+          description: "需要版主处理的问题",
+          icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`
+        }
+      ];
+
+      for (const opt of flagOptions) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "ld-flag-option";
+        btn.setAttribute("role", "menuitem");
+        btn.title = opt.description;
+        btn.innerHTML = `${opt.icon}<span>${opt.label}</span>`;
+        btn.addEventListener("click", () => handleFlagPost(post.id, opt.id, popover));
+        popover.appendChild(btn);
+      }
+
+      return popover;
+    }
+
+    async function handleFlagPost(postId, actionTypeId, popoverEl) {
+      popoverEl.setAttribute("hidden", "");
+
+      try {
+        await performFlagPost(postId, actionTypeId);
+      } catch {
+        // silently ignore
+      }
+    }
+
+    async function performFlagPost(postId, actionTypeId) {
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("未找到 CSRF 令牌");
+      }
+
+      const response = await fetch(`${location.origin}/post_actions`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRF-Token": csrfToken
+        },
+        body: new URLSearchParams({
+          id: String(postId),
+          post_action_type_id: String(actionTypeId),
+          flag_topic: "false"
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.errors?.join("；") || `举报失败：${response.status}`);
+      }
+    }
+
+    function closeAllPopovers() {
+      state.root?.querySelectorAll(".ld-reactions-popover, .ld-flag-popover").forEach((p) => {
+        p.setAttribute("hidden", "");
+      });
     }
 
     function getCsrfToken() {
