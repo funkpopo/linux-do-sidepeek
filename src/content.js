@@ -135,6 +135,7 @@
     replyUploadPendingCount: 0,
     replyUploadSerial: 0,
     replyComposerSessionId: 0,
+    deferOwnerFilterAutoLoad: false,
     lastLocation: location.href,
     settings: loadSettings(),
     isResizing: false,
@@ -528,6 +529,7 @@
     state.currentTargetSpec = null;
     state.currentTopic = null;
     state.currentLatestRepliesTopic = null;
+    state.deferOwnerFilterAutoLoad = false;
     state.loadMoreError = "";
     state.isLoadingMorePosts = false;
     state.isRefreshingLatestReplies = false;
@@ -577,6 +579,7 @@
     state.currentTopic = null;
     state.currentLatestRepliesTopic = null;
     state.currentTargetSpec = null;
+    state.deferOwnerFilterAutoLoad = false;
     state.isRefreshingLatestReplies = false;
     state.meta.textContent = "";
     state.loadMoreError = "";
@@ -918,6 +921,7 @@
     state.currentTargetSpec = targetSpec;
     state.currentTopicIdHint = typeof topic?.id === "number" ? topic.id : state.currentTopicIdHint;
     state.currentResolvedTargetPostNumber = resolvedTargetPostNumber;
+    state.deferOwnerFilterAutoLoad = shouldDeferOwnerFilterAutoLoad(viewModel);
     state.title.textContent = topic.title || fallbackTitle || "帖子预览";
     state.meta.textContent = buildTopicMeta(topic, viewModel.posts.length);
     state.content.replaceChildren(buildTopicView(topic, viewModel));
@@ -1050,6 +1054,7 @@
       return applyAuthorFilterToViewModel({
         posts,
         mode: "targeted",
+        targetPostNumber: targetSpec.targetPostNumber,
         canAutoLoadMore: false,
         hasHiddenPosts: moreAvailable
       }, topic);
@@ -1096,7 +1101,8 @@
         ...(viewModel || {}),
         authorFilter: "all",
         filterHiddenCount: 0,
-        filterUnavailable: false
+        filterUnavailable: false,
+        preservedTargetPostNumber: null
       };
     }
 
@@ -1107,17 +1113,34 @@
         ...viewModel,
         authorFilter: "topicOwner",
         filterHiddenCount: 0,
-        filterUnavailable: true
+        filterUnavailable: true,
+        preservedTargetPostNumber: null
       };
     }
 
-    const filteredPosts = sourcePosts.filter((post) => isTopicOwnerPost(post, topicOwner));
+    const targetPostNumber = viewModel.mode === "targeted" && Number.isFinite(viewModel.targetPostNumber)
+      ? Number(viewModel.targetPostNumber)
+      : null;
+    let preservedTargetPostNumber = null;
+    const filteredPosts = sourcePosts.filter((post) => {
+      if (isTopicOwnerPost(post, topicOwner)) {
+        return true;
+      }
+
+      if (targetPostNumber !== null && Number(post?.post_number) === targetPostNumber) {
+        preservedTargetPostNumber = targetPostNumber;
+        return true;
+      }
+
+      return false;
+    });
     return {
       ...viewModel,
       posts: filteredPosts,
       authorFilter: "topicOwner",
       filterHiddenCount: Math.max(0, sourcePosts.length - filteredPosts.length),
       filterUnavailable: false,
+      preservedTargetPostNumber,
       hasHiddenPosts: Boolean(viewModel.hasHiddenPosts) || filteredPosts.length !== sourcePosts.length
     };
   }
@@ -1910,6 +1933,11 @@
       return;
     }
 
+    if (state.deferOwnerFilterAutoLoad && state.drawerBody.scrollTop <= 0) {
+      updateLoadMoreStatus();
+      return;
+    }
+
     const remainingDistance = state.drawerBody.scrollHeight - state.drawerBody.scrollTop - state.drawerBody.clientHeight;
     if (remainingDistance > LOAD_MORE_TRIGGER_OFFSET) {
       updateLoadMoreStatus();
@@ -2088,28 +2116,34 @@
   }
 
   function handleDrawerRootWheel(event) {
-    if (state.imagePreview?.hidden) {
+    const target = event.target;
+    if (!(target instanceof Element)) {
       return;
     }
 
-    const target = event.target;
-    if (!(target instanceof Element) || !target.closest(".ld-image-preview-stage")) {
+    if (!state.imagePreview?.hidden && target.closest(".ld-image-preview-stage")) {
+      event.preventDefault();
+
+      const nextScale = clampImagePreviewScale(
+        state.imagePreviewScale + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP : -IMAGE_PREVIEW_SCALE_STEP)
+      );
+
+      if (nextScale === state.imagePreviewScale) {
+        return;
+      }
+
+      updateImagePreviewTransformOrigin(event.clientX, event.clientY);
+      state.imagePreviewScale = nextScale;
+      applyImagePreviewScale();
+      return;
+    }
+
+    if (event.deltaY <= 0 || !target.closest(".ld-drawer-body") || !shouldLoadMoreFromOwnerFilterWheel()) {
       return;
     }
 
     event.preventDefault();
-
-    const nextScale = clampImagePreviewScale(
-      state.imagePreviewScale + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP : -IMAGE_PREVIEW_SCALE_STEP)
-    );
-
-    if (nextScale === state.imagePreviewScale) {
-      return;
-    }
-
-    updateImagePreviewTransformOrigin(event.clientX, event.clientY);
-    state.imagePreviewScale = nextScale;
-    applyImagePreviewScale();
+    loadMorePosts().catch(() => {});
   }
 
   function resetImagePreviewScale() {
@@ -2180,6 +2214,7 @@
     state.currentLatestRepliesTopic = null;
     state.currentTargetSpec = null;
     state.currentResolvedTargetPostNumber = null;
+    state.deferOwnerFilterAutoLoad = false;
     state.isLoadingMorePosts = false;
     state.isRefreshingLatestReplies = false;
     state.isReplySubmitting = false;
@@ -2214,6 +2249,7 @@
     state.currentLatestRepliesTopic = null;
     state.currentTargetSpec = null;
     state.currentResolvedTargetPostNumber = null;
+    state.deferOwnerFilterAutoLoad = false;
     state.isLoadingMorePosts = false;
     state.isRefreshingLatestReplies = false;
     state.isReplySubmitting = false;
@@ -2426,6 +2462,10 @@
     }
 
     const ownerLabel = topicOwner.displayUsername ? `@${topicOwner.displayUsername}` : "楼主";
+    if (Number.isFinite(viewModel.preservedTargetPostNumber)) {
+      return `当前为\u201C只看楼主\u201D模式，已保留当前定位的 #${viewModel.preservedTargetPostNumber}，其余仅显示 ${ownerLabel} 的发言。`;
+    }
+
     if (!viewModel.posts.length && viewModel.canAutoLoadMore) {
       return `当前为\u201C只看楼主\u201D模式，已加载范围内还没有 ${ownerLabel} 的更多发言，继续下滑会继续尝试加载。`;
     }
@@ -3614,6 +3654,27 @@
     state.settings.drawerWidth = "custom";
     state.settings.drawerWidthCustom = clampDrawerWidth(window.innerWidth - clientX);
     applyDrawerWidth();
+  }
+
+  function shouldDeferOwnerFilterAutoLoad(viewModel) {
+    return Boolean(
+      viewModel
+      && viewModel.authorFilter === "topicOwner"
+      && viewModel.canAutoLoadMore
+      && Number(viewModel.filterHiddenCount || 0) > 0
+    );
+  }
+
+  function shouldLoadMoreFromOwnerFilterWheel() {
+    if (!state.deferOwnerFilterAutoLoad || !state.drawerBody || !state.currentTopic || state.isLoadingMorePosts) {
+      return false;
+    }
+
+    if (state.settings.postMode === "first" || state.settings.replyOrder === "latestFirst" || state.currentTargetSpec?.hasTarget || !hasMoreTopicPosts(state.currentTopic)) {
+      return false;
+    }
+
+    return state.drawerBody.scrollHeight - state.drawerBody.clientHeight <= LOAD_MORE_TRIGGER_OFFSET;
   }
 
   function updateSettingsPopoverPosition() {
