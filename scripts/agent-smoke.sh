@@ -161,23 +161,95 @@ EOF
 
 click_topic_link_by_index() {
   local index=$1
+  local mode=${2:-any}
   local script
   script=$(cat <<EOF
 (() => {
-  const candidates = Array.from(document.querySelectorAll("#list-area a.title[data-topic-id]")).filter((link) => {
-    const text = link.textContent?.trim();
-    return Boolean(text) && !link.closest("#ld-drawer-root");
-  });
+  const mode = $(printf '%s' "$mode" | jq -Rs .);
 
-  const link = candidates[$index];
-  if (!link) {
-    return { ok: false, reason: "topic-not-found", count: candidates.length };
+  function getTopicMeta(link) {
+    try {
+      const parsed = new URL(link.href, location.href);
+      const segments = parsed.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+      if (segments[0] !== "t") {
+        return { targeted: false, targetSegments: [] };
+      }
+
+      const first = segments[1] || "";
+      const second = segments[2] || "";
+      const firstIsNumber = /^\\d+$/.test(first);
+      const secondIsNumber = /^\\d+$/.test(second);
+      let extraSegments = [];
+
+      if (firstIsNumber) {
+        extraSegments = segments.slice(3).filter(Boolean);
+      } else if (secondIsNumber) {
+        extraSegments = segments.slice(4).filter(Boolean);
+      }
+
+      return {
+        targeted: extraSegments.length > 0,
+        targetSegments: extraSegments
+      };
+    } catch {
+      return { targeted: false, targetSegments: [] };
+    }
   }
 
-  const text = link.textContent.trim();
-  const href = link.href;
-  link.click();
-  return { ok: true, text, href, count: candidates.length };
+  const candidates = Array.from(document.querySelectorAll("#list-area a.title[data-topic-id]")).map((link) => {
+    const text = link.textContent?.trim();
+    if (!text || link.closest("#ld-drawer-root")) {
+      return null;
+    }
+
+    const meta = getTopicMeta(link);
+    return {
+      link,
+      text,
+      href: link.href,
+      targeted: meta.targeted,
+      targetSegments: meta.targetSegments
+    };
+  }).filter(Boolean);
+
+  const selectedCandidates = (() => {
+    if (mode === "untargeted") {
+      return candidates.filter((candidate) => !candidate.targeted);
+    }
+
+    if (mode === "refreshable") {
+      return candidates.filter((candidate) => !candidate.targeted || (
+        candidate.targetSegments.length === 1 && candidate.targetSegments[0] === "last"
+      ));
+    }
+
+    return candidates;
+  })();
+
+  const candidate = selectedCandidates[$index];
+  if (!candidate) {
+    return {
+      ok: false,
+      reason: candidates.length > 0 && selectedCandidates.length === 0
+        ? "topic-not-found-after-filter"
+        : "topic-not-found",
+      count: candidates.length,
+      filteredCount: selectedCandidates.length,
+      mode
+    };
+  }
+
+  candidate.link.click();
+  return {
+    ok: true,
+    text: candidate.text,
+    href: candidate.href,
+    count: candidates.length,
+    filteredCount: selectedCandidates.length,
+    targeted: candidate.targeted,
+    targetSegments: candidate.targetSegments,
+    mode
+  };
 })()
 EOF
 )
@@ -186,9 +258,10 @@ EOF
 
 open_topic_by_index() {
   local index=$1
+  local mode=${2:-any}
   local result
   navigate_latest
-  result=$(click_topic_link_by_index "$index")
+  result=$(click_topic_link_by_index "$index" "$mode")
   if [ "$(echo "$result" | jq -r '.ok')" != "true" ]; then
     echo "$result"
     return 1
@@ -231,6 +304,28 @@ click_settings_toggle() {
 EOF
 )
   ab_eval "$script"
+}
+
+wait_for_refresh_idle() {
+  local attempts=0
+  local state='{}'
+
+  while [ "$attempts" -lt 20 ]; do
+    state=$(refresh_button_state)
+    if [ "$(echo "$state" | jq -r '.exists')" = "true" ] \
+      && [ "$(echo "$state" | jq -r '.hidden')" = "false" ] \
+      && [ "$(echo "$state" | jq -r '.disabled')" = "false" ] \
+      && [ "$(echo "$state" | jq -r '.text // empty')" = "刷新" ]; then
+      echo "$state"
+      return 0
+    fi
+
+    ab wait 300 >/dev/null
+    attempts=$((attempts + 1))
+  done
+
+  echo "$state"
+  return 1
 }
 
 set_overlay_mode() {
@@ -682,14 +777,18 @@ run_009() {
 
 run_010() {
   local case_id="AGENT-CHROME-010"
-  local original_settings setup_result before click after final_state
+  local open_result original_settings setup_result before click after final_state
   local passed=0
   local detail=""
 
-  open_topic_by_index 0 >/dev/null || {
-    record_fail "$case_id" "无法打开抽屉"
+  if ! open_result=$(open_topic_by_index 0 refreshable); then
+    if [ "$(echo "$open_result" | jq -r '.reason // empty')" = "topic-not-found-after-filter" ]; then
+      record_skip "$case_id" "当前列表页没有可用于刷新断言的普通主题或 /last 主题链接"
+    else
+      record_fail "$case_id" "无法打开抽屉: $open_result"
+    fi
     return 0
-  }
+  fi
 
   original_settings=$(settings_values)
   if [ -z "$(echo "$original_settings" | jq -r '.previewMode // empty')" ]; then
@@ -705,8 +804,9 @@ run_010() {
 
   before=$(refresh_button_state)
   click=$(click_refresh_button)
-  ab wait 1800 >/dev/null
-  after=$(refresh_button_state)
+  if ! after=$(wait_for_refresh_idle); then
+    :
+  fi
   final_state=$(drawer_state)
   restore_settings_subset "$original_settings"
 
