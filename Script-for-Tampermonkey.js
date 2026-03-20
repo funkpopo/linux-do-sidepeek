@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.5.1
+// @version      0.5.2
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -93,11 +93,100 @@
     position: relative;
     height: 100%;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     background: var(--secondary, #ffffff);
     border-left: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
     box-shadow: -16px 0 40px rgba(15, 23, 42, 0.18);
     pointer-events: auto;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 5px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--primary-low, rgba(15, 23, 42, 0.10));
+    background: color-mix(in srgb, var(--secondary, #fff) 97%, var(--primary-low, rgba(15, 23, 42, 0.04)));
+    z-index: 3;
+  }
+
+  #ld-drawer-root .ld-side-divider {
+    width: 20px;
+    height: 1px;
+    margin: 4px 0;
+    background: var(--primary-low, rgba(15, 23, 42, 0.14));
+    flex-shrink: 0;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-nav,
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-refresh,
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-link,
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-close,
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-settings-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions [data-tooltip] {
+    position: relative;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    background: rgba(15, 23, 42, 0.86);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    padding: 5px 9px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 100;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions [data-tooltip]:hover::after {
+    opacity: 1;
+  }
+
+  #ld-drawer-root .ld-drawer-refresh.is-refreshing svg {
+    animation: ld-spin 0.8s linear infinite;
+    transform-origin: center;
+  }
+
+  @keyframes ld-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  #ld-drawer-root .ld-drawer-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
   }
 
   #ld-drawer-root .ld-image-preview {
@@ -559,7 +648,7 @@
 
   #ld-drawer-root .ld-topic-view {
     display: grid;
-    gap: 14px;
+    gap: 20px;
   }
 
   #ld-drawer-root .ld-post-card {
@@ -980,8 +1069,13 @@
   }
 
   #ld-drawer-root .ld-post-body pre {
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: visible;
     border-radius: 12px;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+    max-width: 100%;
   }
 
   #ld-drawer-root .ld-post-body img,
@@ -1184,17 +1278,13 @@
       font-size: 18px;
     }
 
-    #ld-drawer-root .ld-drawer-toolbar {
-      gap: 8px;
+    #ld-drawer-root .ld-drawer-side-actions {
+      gap: 2px;
+      padding: 6px 4px;
     }
 
     #ld-drawer-root .ld-drawer-meta {
       font-size: 12px;
-    }
-
-    #ld-drawer-root .ld-drawer-actions {
-      justify-content: flex-start;
-      gap: 6px;
     }
 
     #ld-drawer-root .ld-drawer-settings {
@@ -1394,99 +1484,113 @@
       root.innerHTML = `
         <div class="ld-drawer-resize-handle" role="separator" aria-label="调整抽屉宽度" aria-orientation="vertical" title="拖动调整宽度"></div>
         <div class="ld-drawer-shell">
-          <div class="ld-drawer-header">
-            <div class="ld-drawer-title-group">
-              <div class="ld-drawer-eyebrow">LINUX DO 预览</div>
-              <h2 class="ld-drawer-title">点击帖子标题开始预览</h2>
-            </div>
-            <div class="ld-drawer-toolbar">
+          <div class="ld-drawer-side-actions" role="toolbar" aria-label="抽屉操作">
+            <button class="ld-drawer-nav" type="button" data-nav="prev" data-tooltip="上一帖" aria-label="上一帖">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button class="ld-drawer-nav" type="button" data-nav="next" data-tooltip="下一帖" aria-label="下一帖">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <div class="ld-side-divider" role="separator"></div>
+            <button class="ld-drawer-settings-toggle" type="button" aria-expanded="false" aria-controls="ld-drawer-settings" data-tooltip="选项" aria-label="选项">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button class="ld-drawer-refresh" type="button" aria-label="刷新最新回复" data-tooltip="刷新最新回复" hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+            </button>
+            <a class="ld-drawer-link" href="https://linux.do/latest" target="_blank" rel="noopener noreferrer" data-tooltip="新标签打开" aria-label="新标签打开">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+            <div class="ld-side-divider" role="separator"></div>
+            <button class="ld-drawer-close" type="button" aria-label="关闭抽屉" data-tooltip="关闭">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="ld-drawer-main">
+            <div class="ld-drawer-header">
+              <div class="ld-drawer-title-group">
+                <div class="ld-drawer-eyebrow">LINUX DO 预览</div>
+                <h2 class="ld-drawer-title">点击帖子标题开始预览</h2>
+              </div>
               <div class="ld-drawer-meta"></div>
-              <div class="ld-drawer-actions">
-                <button class="ld-drawer-nav" type="button" data-nav="prev">上一帖</button>
-                <button class="ld-drawer-nav" type="button" data-nav="next">下一帖</button>
-                <button class="ld-drawer-settings-toggle" type="button" aria-expanded="false" aria-controls="ld-drawer-settings">选项</button>
-                <button class="ld-drawer-refresh" type="button" aria-label="刷新最新回复" title="刷新最新回复" hidden>刷新</button>
-                <a class="ld-drawer-link" href="https://linux.do/latest" target="_blank" rel="noopener noreferrer">新标签打开</a>
-                <button class="ld-drawer-close" type="button" aria-label="关闭抽屉">关闭</button>
+            </div>
+            <div class="ld-drawer-settings" id="ld-drawer-settings" hidden>
+              <div class="ld-drawer-settings-card" role="dialog" aria-modal="true" aria-label="预览选项">
+                <div class="ld-settings-head">
+                  <div class="ld-settings-title">预览选项</div>
+                  <button class="ld-settings-close" type="button" aria-label="关闭预览选项">关闭</button>
+                </div>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">预览模式</span>
+                  <select class="ld-setting-control" data-setting="previewMode">
+                    <option value="smart">智能预览</option>
+                    <option value="iframe">整页模式</option>
+                  </select>
+                </label>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">内容范围</span>
+                  <select class="ld-setting-control" data-setting="postMode">
+                    <option value="all">完整主题</option>
+                    <option value="first">仅首帖</option>
+                  </select>
+                </label>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">回复排序</span>
+                  <select class="ld-setting-control" data-setting="replyOrder">
+                    <option value="default">默认顺序</option>
+                    <option value="latestFirst">首帖 + 最新回复</option>
+                  </select>
+                  <span class="ld-setting-hint">长帖下会优先显示最新一批回复，不代表把整帖一次性完整倒序</span>
+                </label>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">抽屉模式</span>
+                  <select class="ld-setting-control" data-setting="drawerMode">
+                    <option value="push">挤压模式</option>
+                    <option value="overlay">浮层模式</option>
+                  </select>
+                  <span class="ld-setting-hint">浮层模式下抽屉悬浮于页面上方，不压缩原有内容</span>
+                </label>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">抽屉宽度</span>
+                  <select class="ld-setting-control" data-setting="drawerWidth">
+                    <option value="narrow">窄</option>
+                    <option value="medium">中</option>
+                    <option value="wide">宽</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                  <span class="ld-setting-hint">也可以直接拖动抽屉左边边缘</span>
+                </label>
+                <button class="ld-settings-reset" type="button">恢复默认</button>
               </div>
             </div>
-          </div>
-          <div class="ld-drawer-settings" id="ld-drawer-settings" hidden>
-            <div class="ld-drawer-settings-card" role="dialog" aria-modal="true" aria-label="预览选项">
-              <div class="ld-settings-head">
-                <div class="ld-settings-title">预览选项</div>
-                <button class="ld-settings-close" type="button" aria-label="关闭预览选项">关闭</button>
+            <div class="ld-drawer-body">
+              <div class="ld-drawer-content"></div>
+            </div>
+            <button class="ld-drawer-reply-fab" type="button" aria-expanded="false" aria-controls="ld-drawer-reply-panel" aria-label="回复这个主题" title="回复这个主题">
+              <span class="ld-drawer-reply-fab-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M4 12.5c0-4.14 3.36-7.5 7.5-7.5h7a1.5 1.5 0 0 1 0 3h-7A4.5 4.5 0 0 0 7 12.5v1.38l1.44-1.44a1.5 1.5 0 0 1 2.12 2.12l-4 4a1.5 1.5 0 0 1-2.12 0l-4-4a1.5 1.5 0 1 1 2.12-2.12L4 13.88V12.5Z" fill="currentColor"></path>
+                </svg>
+              </span>
+              <span class="ld-drawer-reply-fab-label">回复</span>
+            </button>
+            <div class="ld-drawer-reply-panel" id="ld-drawer-reply-panel" hidden>
+              <div class="ld-reply-panel-head">
+                <div class="ld-reply-panel-title">回复主题</div>
+                <button class="ld-reply-panel-close" type="button" aria-label="关闭快速回复">关闭</button>
               </div>
-              <label class="ld-setting-field">
-                <span class="ld-setting-label">预览模式</span>
-                <select class="ld-setting-control" data-setting="previewMode">
-                  <option value="smart">智能预览</option>
-                  <option value="iframe">整页模式</option>
-                </select>
-              </label>
-              <label class="ld-setting-field">
-                <span class="ld-setting-label">内容范围</span>
-                <select class="ld-setting-control" data-setting="postMode">
-                  <option value="all">完整主题</option>
-                  <option value="first">仅首帖</option>
-                </select>
-              </label>
-              <label class="ld-setting-field">
-                <span class="ld-setting-label">回复排序</span>
-                <select class="ld-setting-control" data-setting="replyOrder">
-                  <option value="default">默认顺序</option>
-                  <option value="latestFirst">首帖 + 最新回复</option>
-                </select>
-                <span class="ld-setting-hint">长帖下会优先显示最新一批回复，不代表把整帖一次性完整倒序</span>
-              </label>
-              <label class="ld-setting-field">
-                <span class="ld-setting-label">抽屉模式</span>
-                <select class="ld-setting-control" data-setting="drawerMode">
-                  <option value="push">挤压模式</option>
-                  <option value="overlay">浮层模式</option>
-                </select>
-                <span class="ld-setting-hint">浮层模式下抽屉悬浮于页面上方，不压缩原有内容</span>
-              </label>
-              <label class="ld-setting-field">
-                <span class="ld-setting-label">抽屉宽度</span>
-                <select class="ld-setting-control" data-setting="drawerWidth">
-                  <option value="narrow">窄</option>
-                  <option value="medium">中</option>
-                  <option value="wide">宽</option>
-                  <option value="custom">自定义</option>
-                </select>
-                <span class="ld-setting-hint">也可以直接拖动抽屉左边边缘</span>
-              </label>
-              <button class="ld-settings-reset" type="button">恢复默认</button>
+              <textarea class="ld-reply-textarea" rows="7" placeholder="写点什么... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送"></textarea>
+              <div class="ld-reply-status" aria-live="polite"></div>
+              <div class="ld-reply-actions">
+                <button class="ld-reply-action" type="button" data-action="cancel">取消</button>
+                <button class="ld-reply-action ld-reply-action-primary" type="button" data-action="submit">发送回复</button>
+              </div>
             </div>
-          </div>
-          <div class="ld-drawer-body">
-            <div class="ld-drawer-content"></div>
-          </div>
-          <button class="ld-drawer-reply-fab" type="button" aria-expanded="false" aria-controls="ld-drawer-reply-panel" aria-label="回复这个主题" title="回复这个主题">
-            <span class="ld-drawer-reply-fab-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M4 12.5c0-4.14 3.36-7.5 7.5-7.5h7a1.5 1.5 0 0 1 0 3h-7A4.5 4.5 0 0 0 7 12.5v1.38l1.44-1.44a1.5 1.5 0 0 1 2.12 2.12l-4 4a1.5 1.5 0 0 1-2.12 0l-4-4a1.5 1.5 0 1 1 2.12-2.12L4 13.88V12.5Z" fill="currentColor"></path>
-              </svg>
-            </span>
-            <span class="ld-drawer-reply-fab-label">回复</span>
-          </button>
-          <div class="ld-drawer-reply-panel" id="ld-drawer-reply-panel" hidden>
-            <div class="ld-reply-panel-head">
-              <div class="ld-reply-panel-title">回复主题</div>
-              <button class="ld-reply-panel-close" type="button" aria-label="关闭快速回复">关闭</button>
-            </div>
-            <textarea class="ld-reply-textarea" rows="7" placeholder="写点什么... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送"></textarea>
-            <div class="ld-reply-status" aria-live="polite"></div>
-            <div class="ld-reply-actions">
-              <button class="ld-reply-action" type="button" data-action="cancel">取消</button>
-              <button class="ld-reply-action ld-reply-action-primary" type="button" data-action="submit">发送回复</button>
-            </div>
-          </div>
-          <div class="ld-image-preview" hidden aria-hidden="true">
-            <button class="ld-image-preview-close" type="button" aria-label="关闭图片预览">关闭</button>
-            <div class="ld-image-preview-stage">
-              <img class="ld-image-preview-image" alt="图片预览" />
+            <div class="ld-image-preview" hidden aria-hidden="true">
+              <button class="ld-image-preview-close" type="button" aria-label="关闭图片预览">关闭</button>
+              <div class="ld-image-preview-stage">
+                <img class="ld-image-preview-image" alt="图片预览" />
+              </div>
             </div>
           </div>
         </div>
@@ -3084,9 +3188,13 @@
       }
 
       const shouldShow = canRefreshLatestReplies();
+      const isRefreshing = state.isRefreshingLatestReplies;
       state.latestRepliesRefreshButton.hidden = !shouldShow;
-      state.latestRepliesRefreshButton.disabled = !shouldShow || state.isRefreshingLatestReplies || Boolean(state.abortController);
-      state.latestRepliesRefreshButton.textContent = state.isRefreshingLatestReplies ? "刷新中..." : "刷新";
+      state.latestRepliesRefreshButton.disabled = !shouldShow || isRefreshing || Boolean(state.abortController);
+      state.latestRepliesRefreshButton.classList.toggle("is-refreshing", isRefreshing);
+      const label = isRefreshing ? "刷新中..." : "刷新最新回复";
+      state.latestRepliesRefreshButton.setAttribute("data-tooltip", label);
+      state.latestRepliesRefreshButton.setAttribute("aria-label", label);
     }
 
     function shouldLoadLatestRepliesTopic(topic, targetSpec) {
