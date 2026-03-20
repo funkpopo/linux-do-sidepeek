@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.5.2
+// @version      0.5.3
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -111,6 +111,85 @@
     border-right: 1px solid var(--primary-low, rgba(15, 23, 42, 0.10));
     background: color-mix(in srgb, var(--secondary, #fff) 97%, var(--primary-low, rgba(15, 23, 42, 0.04)));
     z-index: 3;
+  }
+
+  #ld-drawer-root .ld-update-popup {
+    display: none;
+    position: absolute;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px) + 8px);
+    width: min(260px, calc(100% - 24px));
+    pointer-events: auto;
+    z-index: 2147483646;
+
+    padding: 10px 10px 10px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--secondary, #fff) 90%, transparent);
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.14));
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+    backdrop-filter: blur(10px);
+
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #ld-drawer-root .ld-update-popup.is-visible {
+    display: flex;
+  }
+
+  #ld-drawer-root .ld-update-popup-text {
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--primary-low, rgba(15, 23, 42, 0.86));
+  }
+
+  #ld-drawer-root .ld-update-popup-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  #ld-drawer-root .ld-update-popup-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 18%, transparent);
+    color: var(--tertiary, #3b82f6);
+    border: 1px solid color-mix(in srgb, var(--tertiary, #3b82f6) 30%, transparent);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  #ld-drawer-root .ld-update-popup-link:hover {
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 28%, transparent);
+    border-color: color-mix(in srgb, var(--tertiary, #3b82f6) 48%, transparent);
+  }
+
+  #ld-drawer-root .ld-update-popup-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--primary-low, rgba(15, 23, 42, 0.62));
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  #ld-drawer-root .ld-update-popup-close:hover {
+    background: color-mix(in srgb, var(--secondary, #fff) 70%, transparent);
+    border-color: var(--primary-low, rgba(15, 23, 42, 0.22));
+    color: var(--primary, #1f2937);
   }
 
   #ld-drawer-root .ld-side-divider {
@@ -1326,6 +1405,13 @@
     document.head.appendChild(styleEl);
 
     // --- Core Logic ---
+    const CURRENT_VERSION = "0.5.2";
+    const GREASYFORK_URL = "https://greasyfork.org/zh-CN/scripts/570223-linux-do-sidepeek";
+    const GREASYFORK_API_URL = "https://greasyfork.org/scripts/570223.json";
+    const UPDATE_CHECK_KEY = "ld-update-check-v1";
+    const UPDATE_CHECK_TTL = 24 * 60 * 60 * 1000;
+    const UPDATE_DISMISS_KEY = "ld-update-dismiss-v1";
+
     const ROOT_ID = "ld-drawer-root";
     const PAGE_OPEN_CLASS = "ld-drawer-page-open";
     const PAGE_IFRAME_OPEN_CLASS = "ld-drawer-page-iframe-open";
@@ -1464,13 +1550,18 @@
       topicTrackerRefreshTimer: 0,
       topicTrackerRefreshStartedAt: 0,
       topicTrackerRefreshLoadingObserved: false,
-      availableReactions: null
+      availableReactions: null,
+      updatePopup: null,
+      updatePopupVersionLabel: null,
+      updatePopupCloseButton: null,
+      updateLatestVersion: ""
     };
 
     function init() {
       ensureDrawer();
       bindEvents();
       watchLocationChanges();
+      checkForUpdate();
     }
 
     function ensureDrawer() {
@@ -1484,6 +1575,13 @@
       root.innerHTML = `
         <div class="ld-drawer-resize-handle" role="separator" aria-label="调整抽屉宽度" aria-orientation="vertical" title="拖动调整宽度"></div>
         <div class="ld-drawer-shell">
+          <div class="ld-update-popup" id="ld-update-popup" role="status" aria-live="polite" aria-label="发现新版本提示">
+            <div class="ld-update-popup-text">发现新版本：<span id="ld-update-popup-version"></span>，点击更新跳转</div>
+            <div class="ld-update-popup-actions">
+              <a class="ld-update-popup-link" href="${GREASYFORK_URL}" target="_blank" rel="noopener noreferrer">更新</a>
+              <button class="ld-update-popup-close" id="ld-update-popup-close" type="button" aria-label="关闭更新提示">x</button>
+            </div>
+          </div>
           <div class="ld-drawer-side-actions" role="toolbar" aria-label="抽屉操作">
             <button class="ld-drawer-nav" type="button" data-nav="prev" data-tooltip="上一帖" aria-label="上一帖">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -1623,6 +1721,9 @@
       state.prevButton = root.querySelector('[data-nav="prev"]');
       state.nextButton = root.querySelector('[data-nav="next"]');
       state.resizeHandle = root.querySelector(".ld-drawer-resize-handle");
+      state.updatePopup = root.querySelector("#ld-update-popup");
+      state.updatePopupVersionLabel = root.querySelector("#ld-update-popup-version");
+      state.updatePopupCloseButton = root.querySelector("#ld-update-popup-close");
 
       root.querySelector(".ld-drawer-close").addEventListener("click", closeDrawer);
       state.prevButton.addEventListener("click", () => navigateTopic(-1));
@@ -1642,6 +1743,7 @@
       state.settingsCloseButton.addEventListener("click", () => setSettingsPanelOpen(false));
       state.settingsPanel.querySelector(".ld-settings-reset").addEventListener("click", resetSettings);
       state.resizeHandle.addEventListener("pointerdown", startDrawerResize);
+      state.updatePopupCloseButton?.addEventListener("click", () => hideUpdatePopup(true));
 
       syncSettingsUI();
       applyDrawerWidth();
@@ -4843,6 +4945,96 @@
         childList: true,
         subtree: true
       });
+    }
+
+    function compareVersions(a, b) {
+      const pa = String(a).split(".").map(Number);
+      const pb = String(b).split(".").map(Number);
+      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const diff = (pa[i] || 0) - (pb[i] || 0);
+        if (diff !== 0) {
+          return diff;
+        }
+      }
+      return 0;
+    }
+
+    function hideUpdatePopup(dismiss) {
+      if (!state.updatePopup) {
+        return;
+      }
+
+      state.updatePopup.classList.remove("is-visible");
+
+      if (dismiss && state.updateLatestVersion) {
+        try {
+          localStorage.setItem(UPDATE_DISMISS_KEY, state.updateLatestVersion);
+        } catch (_) {
+          // ignore storage errors
+        }
+      }
+    }
+
+    function showUpdatePopup(latestVersion) {
+      if (!state.updatePopup) {
+        return;
+      }
+
+      if (!latestVersion) {
+        return;
+      }
+
+      const dismissed = localStorage.getItem(UPDATE_DISMISS_KEY);
+      if (dismissed && dismissed === latestVersion) {
+        return;
+      }
+
+      state.updateLatestVersion = latestVersion;
+
+      if (state.updatePopupVersionLabel) {
+        state.updatePopupVersionLabel.textContent = latestVersion;
+      }
+
+      state.updatePopup.classList.add("is-visible");
+    }
+
+    async function checkForUpdate() {
+      try {
+        const cached = localStorage.getItem(UPDATE_CHECK_KEY);
+        if (cached) {
+          const { ts, latestVersion } = JSON.parse(cached);
+          if (Date.now() - ts < UPDATE_CHECK_TTL) {
+            if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+              showUpdatePopup(latestVersion);
+            }
+            return;
+          }
+        }
+      } catch (_) {
+        // ignore malformed cache
+      }
+
+      try {
+        const resp = await fetch(GREASYFORK_API_URL, { credentials: "omit" });
+        if (!resp.ok) {
+          return;
+        }
+        const data = await resp.json();
+        const latestVersion = typeof data?.version === "string" ? data.version : "";
+        if (!latestVersion) {
+          return;
+        }
+        try {
+          localStorage.setItem(UPDATE_CHECK_KEY, JSON.stringify({ ts: Date.now(), latestVersion }));
+        } catch (_) {
+          // ignore storage errors
+        }
+        if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+          showUpdatePopup(latestVersion);
+        }
+      } catch (_) {
+        // network errors are silent
+      }
     }
 
     function hasPreviewableTopicLinks() {
