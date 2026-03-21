@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.5.3
+// @version      0.6.0
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -19,6 +19,7 @@
     styleEl.textContent = `
   :root {
     --ld-drawer-width: clamp(360px, 42vw, 920px);
+    --ld-post-body-font-size: 15px;
     --ld-image-preview-scale: 1;
     --ld-topic-tracker-left: 50vw;
     --ld-topic-tracker-top: 112px;
@@ -202,6 +203,7 @@
 
   #ld-drawer-root .ld-drawer-side-actions .ld-drawer-nav,
   #ld-drawer-root .ld-drawer-side-actions .ld-drawer-refresh,
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-reply-toggle,
   #ld-drawer-root .ld-drawer-side-actions .ld-drawer-link,
   #ld-drawer-root .ld-drawer-side-actions .ld-drawer-close,
   #ld-drawer-root .ld-drawer-side-actions .ld-drawer-settings-toggle {
@@ -247,6 +249,23 @@
 
   #ld-drawer-root .ld-drawer-side-actions [data-tooltip]:hover::after {
     opacity: 1;
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-reply-toggle {
+    border-color: color-mix(in srgb, var(--tertiary, #3b82f6) 30%, var(--primary-low, rgba(15, 23, 42, 0.12)));
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 10%, var(--secondary, #fff));
+    color: var(--tertiary, #3b82f6);
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-reply-toggle[aria-expanded="true"] {
+    border-color: var(--tertiary, #3b82f6);
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 16%, var(--secondary, #fff));
+  }
+
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-reply-toggle:disabled,
+  #ld-drawer-root .ld-drawer-side-actions .ld-drawer-reply-toggle.is-disabled {
+    opacity: 0.64;
+    cursor: not-allowed;
   }
 
   #ld-drawer-root .ld-drawer-refresh.is-refreshing svg {
@@ -418,6 +437,7 @@
 
   #ld-drawer-root .ld-drawer-nav,
   #ld-drawer-root .ld-drawer-refresh,
+  #ld-drawer-root .ld-drawer-reply-toggle,
   #ld-drawer-root .ld-drawer-link,
   #ld-drawer-root .ld-drawer-close,
   #ld-drawer-root .ld-drawer-settings-toggle,
@@ -435,13 +455,15 @@
   }
 
   #ld-drawer-root .ld-drawer-nav:disabled,
-  #ld-drawer-root .ld-drawer-refresh:disabled {
+  #ld-drawer-root .ld-drawer-refresh:disabled,
+  #ld-drawer-root .ld-drawer-reply-toggle:disabled {
     opacity: 0.48;
     cursor: not-allowed;
   }
 
   #ld-drawer-root .ld-drawer-nav:disabled:hover,
-  #ld-drawer-root .ld-drawer-refresh:disabled:hover {
+  #ld-drawer-root .ld-drawer-refresh:disabled:hover,
+  #ld-drawer-root .ld-drawer-reply-toggle:disabled:hover {
     border-color: var(--primary-low, rgba(15, 23, 42, 0.12));
     color: inherit;
   }
@@ -449,6 +471,7 @@
   #ld-drawer-root .ld-drawer-close:hover,
   #ld-drawer-root .ld-drawer-nav:hover,
   #ld-drawer-root .ld-drawer-refresh:hover,
+  #ld-drawer-root .ld-drawer-reply-toggle:hover,
   #ld-drawer-root .ld-drawer-link:hover,
   #ld-drawer-root .ld-drawer-settings-toggle:hover,
   #ld-drawer-root .ld-settings-close:hover,
@@ -514,9 +537,26 @@
     gap: 6px;
   }
 
+  #ld-drawer-root .ld-setting-field.is-disabled {
+    opacity: 0.58;
+  }
+
+  #ld-drawer-root .ld-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
   #ld-drawer-root .ld-setting-label {
     font-size: 12px;
     color: var(--primary-medium, rgba(15, 23, 42, 0.64));
+  }
+
+  #ld-drawer-root .ld-setting-value {
+    color: var(--primary-medium, rgba(15, 23, 42, 0.72));
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
   }
 
   #ld-drawer-root .ld-setting-hint {
@@ -535,6 +575,23 @@
     padding: 10px 12px;
   }
 
+  #ld-drawer-root .ld-setting-range {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--tertiary, #3b82f6);
+    cursor: pointer;
+  }
+
+  #ld-drawer-root .ld-setting-field.is-disabled .ld-setting-range {
+    cursor: not-allowed;
+  }
+
+  #ld-drawer-root .ld-setting-range:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--tertiary, #3b82f6) 24%, transparent);
+    outline-offset: 3px;
+    border-radius: 999px;
+  }
+
   #ld-drawer-root .ld-settings-reset {
     align-self: end;
     justify-self: end;
@@ -545,6 +602,40 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+  }
+
+  #ld-drawer-root .ld-drawer-body,
+  #ld-drawer-root .ld-drawer-settings-card,
+  #ld-drawer-root .ld-drawer-reply-panel {
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--tertiary, #3b82f6) 40%, transparent) transparent;
+  }
+
+  #ld-drawer-root .ld-drawer-body::-webkit-scrollbar,
+  #ld-drawer-root .ld-drawer-settings-card::-webkit-scrollbar,
+  #ld-drawer-root .ld-drawer-reply-panel::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  #ld-drawer-root .ld-drawer-body::-webkit-scrollbar-track,
+  #ld-drawer-root .ld-drawer-settings-card::-webkit-scrollbar-track,
+  #ld-drawer-root .ld-drawer-reply-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #ld-drawer-root .ld-drawer-body::-webkit-scrollbar-thumb,
+  #ld-drawer-root .ld-drawer-settings-card::-webkit-scrollbar-thumb,
+  #ld-drawer-root .ld-drawer-reply-panel::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 40%, transparent);
+    border-radius: 999px;
+  }
+
+  #ld-drawer-root .ld-drawer-body::-webkit-scrollbar-thumb:hover,
+  #ld-drawer-root .ld-drawer-settings-card::-webkit-scrollbar-thumb:hover,
+  #ld-drawer-root .ld-drawer-reply-panel::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 64%, transparent);
   }
 
   #ld-drawer-root .ld-drawer-content {
@@ -564,6 +655,10 @@
 
   #ld-drawer-root.ld-drawer-iframe-mode .ld-drawer-reply-fab,
   #ld-drawer-root.ld-drawer-iframe-mode .ld-drawer-reply-panel {
+    display: none !important;
+  }
+
+  #ld-drawer-root .ld-drawer-reply-fab[hidden] {
     display: none !important;
   }
 
@@ -623,13 +718,14 @@
 
   #ld-drawer-root .ld-drawer-reply-panel {
     position: absolute;
-    top: 50%;
+    top: calc(var(--ld-reply-panel-top, 84px) + 8px);
     right: 14px;
     z-index: 5;
     width: min(360px, calc(100% - 28px));
     display: grid;
     gap: 12px;
-    transform: translateY(-50%);
+    max-height: calc(100% - var(--ld-reply-panel-top, 84px) - 22px);
+    overflow: auto;
     padding: 14px;
     border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
     border-radius: 18px;
@@ -787,7 +883,7 @@
   #ld-drawer-root .ld-post-body {
     padding: 16px;
     line-height: 1.72;
-    font-size: 14px;
+    font-size: var(--ld-post-body-font-size, 14px);
     overflow-wrap: break-word;
     word-break: break-word;
     min-width: 0;
@@ -1144,7 +1240,7 @@
 
   #ld-drawer-root .ld-post-body pre,
   #ld-drawer-root .ld-post-body code {
-    font-size: 13px;
+    font-size: max(12px, calc(var(--ld-post-body-font-size, 14px) - 1px));
   }
 
   #ld-drawer-root .ld-post-body pre {
@@ -1388,7 +1484,7 @@
       left: 12px;
       bottom: max(72px, env(safe-area-inset-bottom, 0px) + 56px);
       width: auto;
-      transform: none;
+      max-height: calc(100dvh - max(72px, env(safe-area-inset-bottom, 0px) + 56px) - 16px);
     }
   }
 
@@ -1405,7 +1501,7 @@
     document.head.appendChild(styleEl);
 
     // --- Core Logic ---
-    const CURRENT_VERSION = "0.5.2";
+    const CURRENT_VERSION = "0.6.0";
     const GREASYFORK_URL = "https://greasyfork.org/zh-CN/scripts/570223-linux-do-sidepeek";
     const GREASYFORK_API_URL = "https://greasyfork.org/scripts/570223.json";
     const UPDATE_CHECK_KEY = "ld-update-check-v1";
@@ -1423,13 +1519,19 @@
     const IMAGE_PREVIEW_SCALE_MIN = 1;
     const IMAGE_PREVIEW_SCALE_MAX = 4;
     const IMAGE_PREVIEW_SCALE_STEP = 0.2;
+    const POST_BODY_FONT_SIZE_MIN = 13;
+    const POST_BODY_FONT_SIZE_MAX = 18;
+    const REPLY_UPLOAD_MARKER = "\u2063";
     const DEFAULT_SETTINGS = {
-      previewMode: "smart",
+      previewMode: "iframe",
       postMode: "all",
+      postBodyFontSize: 15,
+      authorFilter: "all",
       replyOrder: "default",
-      drawerWidth: "medium",
+      floatingReplyButton: "off",
+      drawerWidth: "narrow",
       drawerWidthCustom: 720,
-      drawerMode: "push"
+      drawerMode: "overlay"
     };
     const DRAWER_WIDTHS = {
       narrow: "clamp(320px, 34vw, 680px)",
@@ -1498,7 +1600,8 @@
       meta: null,
       drawerBody: null,
       content: null,
-      replyButton: null,
+      replyToggleButton: null,
+      replyFabButton: null,
       replyPanel: null,
       replyPanelTitle: null,
       replyTextarea: null,
@@ -1512,6 +1615,10 @@
       openInTab: null,
       settingsPanel: null,
       settingsCard: null,
+      postBodyFontSizeField: null,
+      postBodyFontSizeControl: null,
+      postBodyFontSizeValue: null,
+      postBodyFontSizeHint: null,
       settingsCloseButton: null,
       settingsToggle: null,
       latestRepliesRefreshButton: null,
@@ -1537,6 +1644,11 @@
       abortController: null,
       loadMoreAbortController: null,
       replyAbortController: null,
+      replyUploadControllers: [],
+      replyUploadPendingCount: 0,
+      replyUploadSerial: 0,
+      replyComposerSessionId: 0,
+      deferOwnerFilterAutoLoad: false,
       lastLocation: location.href,
       settings: loadSettings(),
       isResizing: false,
@@ -1596,6 +1708,9 @@
             <button class="ld-drawer-refresh" type="button" aria-label="刷新最新回复" data-tooltip="刷新最新回复" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
             </button>
+            <button class="ld-drawer-reply-toggle ld-drawer-reply-trigger" type="button" aria-expanded="false" aria-controls="ld-drawer-reply-panel" aria-label="回复当前主题" data-tooltip="回复当前主题" hidden>
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 12.5c0-4.14 3.36-7.5 7.5-7.5h7a1.5 1.5 0 0 1 0 3h-7A4.5 4.5 0 0 0 7 12.5v1.38l1.44-1.44a1.5 1.5 0 0 1 2.12 2.12l-4 4a1.5 1.5 0 0 1-2.12 0l-4-4a1.5 1.5 0 1 1 2.12-2.12L4 13.88V12.5Z"/></svg>
+            </button>
             <a class="ld-drawer-link" href="https://linux.do/latest" target="_blank" rel="noopener noreferrer" data-tooltip="新标签打开" aria-label="新标签打开">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
@@ -1632,6 +1747,29 @@
                     <option value="first">仅首帖</option>
                   </select>
                 </label>
+                <label class="ld-setting-field" data-setting-group="postBodyFontSize">
+                  <div class="ld-setting-row">
+                    <span class="ld-setting-label">正文字号</span>
+                    <span class="ld-setting-value" data-setting-value="postBodyFontSize">15px</span>
+                  </div>
+                  <input
+                    class="ld-setting-range"
+                    type="range"
+                    min="${POST_BODY_FONT_SIZE_MIN}"
+                    max="${POST_BODY_FONT_SIZE_MAX}"
+                    step="1"
+                    data-setting="postBodyFontSize"
+                  />
+                  <span class="ld-setting-hint" data-setting-hint="postBodyFontSize">只调整帖子正文和代码字号，不影响标题和按钮</span>
+                </label>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">作者过滤</span>
+                  <select class="ld-setting-control" data-setting="authorFilter">
+                    <option value="all">全部作者</option>
+                    <option value="topicOwner">只看楼主</option>
+                  </select>
+                  <span class="ld-setting-hint">只在智能预览里过滤显示，不影响原帖内容</span>
+                </label>
                 <label class="ld-setting-field">
                   <span class="ld-setting-label">回复排序</span>
                   <select class="ld-setting-control" data-setting="replyOrder">
@@ -1639,6 +1777,14 @@
                     <option value="latestFirst">首帖 + 最新回复</option>
                   </select>
                   <span class="ld-setting-hint">长帖下会优先显示最新一批回复，不代表把整帖一次性完整倒序</span>
+                </label>
+                <label class="ld-setting-field">
+                  <span class="ld-setting-label">悬浮回复入口</span>
+                  <select class="ld-setting-control" data-setting="floatingReplyButton">
+                    <option value="off">关闭</option>
+                    <option value="on">开启</option>
+                  </select>
+                  <span class="ld-setting-hint">关闭后只保留侧边栏的回复按钮，开启后额外显示右侧悬浮快捷入口</span>
                 </label>
                 <label class="ld-setting-field">
                   <span class="ld-setting-label">抽屉模式</span>
@@ -1664,7 +1810,7 @@
             <div class="ld-drawer-body">
               <div class="ld-drawer-content"></div>
             </div>
-            <button class="ld-drawer-reply-fab" type="button" aria-expanded="false" aria-controls="ld-drawer-reply-panel" aria-label="回复这个主题" title="回复这个主题">
+            <button class="ld-drawer-reply-fab ld-drawer-reply-trigger" type="button" aria-expanded="false" aria-controls="ld-drawer-reply-panel" aria-label="回复当前主题" title="回复当前主题">
               <span class="ld-drawer-reply-fab-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false">
                   <path d="M4 12.5c0-4.14 3.36-7.5 7.5-7.5h7a1.5 1.5 0 0 1 0 3h-7A4.5 4.5 0 0 0 7 12.5v1.38l1.44-1.44a1.5 1.5 0 0 1 2.12 2.12l-4 4a1.5 1.5 0 0 1-2.12 0l-4-4a1.5 1.5 0 1 1 2.12-2.12L4 13.88V12.5Z" fill="currentColor"></path>
@@ -1677,7 +1823,7 @@
                 <div class="ld-reply-panel-title">回复主题</div>
                 <button class="ld-reply-panel-close" type="button" aria-label="关闭快速回复">关闭</button>
               </div>
-              <textarea class="ld-reply-textarea" rows="7" placeholder="写点什么... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送"></textarea>
+              <textarea class="ld-reply-textarea" rows="7" placeholder="写点什么... 支持 Markdown，可直接粘贴图片自动上传。Ctrl+Enter 或 Cmd+Enter 可发送"></textarea>
               <div class="ld-reply-status" aria-live="polite"></div>
               <div class="ld-reply-actions">
                 <button class="ld-reply-action" type="button" data-action="cancel">取消</button>
@@ -1702,7 +1848,8 @@
       state.meta = root.querySelector(".ld-drawer-meta");
       state.drawerBody = root.querySelector(".ld-drawer-body");
       state.content = root.querySelector(".ld-drawer-content");
-      state.replyButton = root.querySelector(".ld-drawer-reply-fab");
+      state.replyToggleButton = root.querySelector(".ld-drawer-reply-toggle");
+      state.replyFabButton = root.querySelector(".ld-drawer-reply-fab");
       state.replyPanel = root.querySelector(".ld-drawer-reply-panel");
       state.replyPanelTitle = root.querySelector(".ld-reply-panel-title");
       state.replyTextarea = root.querySelector(".ld-reply-textarea");
@@ -1715,6 +1862,10 @@
       state.openInTab = root.querySelector(".ld-drawer-link");
       state.settingsPanel = root.querySelector(".ld-drawer-settings");
       state.settingsCard = root.querySelector(".ld-drawer-settings-card");
+      state.postBodyFontSizeField = root.querySelector('[data-setting-group="postBodyFontSize"]');
+      state.postBodyFontSizeControl = root.querySelector('[data-setting="postBodyFontSize"]');
+      state.postBodyFontSizeValue = root.querySelector('[data-setting-value="postBodyFontSize"]');
+      state.postBodyFontSizeHint = root.querySelector('[data-setting-hint="postBodyFontSize"]');
       state.settingsCloseButton = root.querySelector(".ld-settings-close");
       state.settingsToggle = root.querySelector(".ld-drawer-settings-toggle");
       state.latestRepliesRefreshButton = root.querySelector(".ld-drawer-refresh");
@@ -1730,15 +1881,18 @@
       state.nextButton.addEventListener("click", () => navigateTopic(1));
       state.settingsToggle.addEventListener("click", toggleSettingsPanel);
       state.latestRepliesRefreshButton.addEventListener("click", handleLatestRepliesRefresh);
-      state.replyButton.addEventListener("click", toggleReplyPanel);
+      state.replyToggleButton.addEventListener("click", toggleReplyPanel);
+      state.replyFabButton.addEventListener("click", toggleReplyPanel);
       state.replyCancelButton.addEventListener("click", () => setReplyPanelOpen(false));
       state.replySubmitButton.addEventListener("click", handleReplySubmit);
       root.querySelector(".ld-reply-panel-close").addEventListener("click", () => setReplyPanelOpen(false));
       state.replyTextarea.addEventListener("keydown", handleReplyTextareaKeydown);
+      state.replyTextarea.addEventListener("paste", handleReplyTextareaPaste);
       root.addEventListener("click", handleDrawerRootClick);
       root.addEventListener("wheel", handleDrawerRootWheel, { passive: false });
       state.drawerBody.addEventListener("scroll", handleDrawerBodyScroll, { passive: true });
       state.settingsPanel.addEventListener("click", handleSettingsPanelClick);
+      state.settingsPanel.addEventListener("input", handleSettingsInput);
       state.settingsPanel.addEventListener("change", handleSettingsChange);
       state.settingsCloseButton.addEventListener("click", () => setSettingsPanelOpen(false));
       state.settingsPanel.querySelector(".ld-settings-reset").addEventListener("click", resetSettings);
@@ -1746,7 +1900,9 @@
       state.updatePopupCloseButton?.addEventListener("click", () => hideUpdatePopup(true));
 
       syncSettingsUI();
+      applyPostBodyFontSize();
       applyDrawerWidth();
+      applyDrawerMode();
       syncNavigationState();
       syncLatestRepliesRefreshUI();
       syncReplyUI();
@@ -1781,7 +1937,7 @@
         setSettingsPanelOpen(false);
       }
 
-      if (!state.replyPanel?.hidden && !target.closest(".ld-drawer-reply-panel") && !target.closest(".ld-drawer-reply-fab")) {
+      if (!state.replyPanel?.hidden && !target.closest(".ld-drawer-reply-panel") && !target.closest(".ld-drawer-reply-trigger")) {
         setReplyPanelOpen(false);
       }
 
@@ -1932,6 +2088,11 @@
         highlightLink(activeLink);
         syncNavigationState();
 
+        if (shouldRefreshCurrentTopicOnRepeatOpen()) {
+          handleLatestRepliesRefresh();
+          return;
+        }
+
         if (!state.currentViewTracked && !state.currentTrackRequest) {
           loadTopic(topicUrl, fallbackTitle, topicIdHint);
         }
@@ -1945,6 +2106,7 @@
       state.currentTargetSpec = null;
       state.currentTopic = null;
       state.currentLatestRepliesTopic = null;
+      state.deferOwnerFilterAutoLoad = false;
       state.loadMoreError = "";
       state.isLoadingMorePosts = false;
       state.isRefreshingLatestReplies = false;
@@ -1994,6 +2156,7 @@
       state.currentTopic = null;
       state.currentLatestRepliesTopic = null;
       state.currentTargetSpec = null;
+      state.deferOwnerFilterAutoLoad = false;
       state.isRefreshingLatestReplies = false;
       state.meta.textContent = "";
       state.loadMoreError = "";
@@ -2230,16 +2393,15 @@
       state.isLoadingMorePosts = false;
       state.loadMoreError = "";
 
-      if (state.settings.previewMode === "iframe") {
-        if (!state.currentViewTracked) {
-          ensureTrackedTopicVisit(topicUrl, topicIdHint).catch(() => {});
-        }
-        renderIframeFallback(topicUrl, fallbackTitle, null, true);
-        return;
-      }
-
       if (state.abortController) {
         state.abortController.abort();
+        state.abortController = null;
+      }
+
+      if (state.settings.previewMode === "iframe") {
+        renderIframeFallback(topicUrl, fallbackTitle, null, true);
+        syncLatestRepliesRefreshUI();
+        return;
       }
 
       if (!state.currentViewTracked) {
@@ -2335,6 +2497,7 @@
       state.currentTargetSpec = targetSpec;
       state.currentTopicIdHint = typeof topic?.id === "number" ? topic.id : state.currentTopicIdHint;
       state.currentResolvedTargetPostNumber = resolvedTargetPostNumber;
+      state.deferOwnerFilterAutoLoad = shouldDeferOwnerFilterAutoLoad(viewModel);
       state.title.textContent = topic.title || fallbackTitle || "帖子预览";
       state.meta.textContent = buildTopicMeta(topic, viewModel.posts.length);
       state.content.replaceChildren(buildTopicView(topic, viewModel));
@@ -2416,6 +2579,14 @@
         footer.appendChild(note);
       }
 
+      const authorFilterNote = buildAuthorFilterNote(viewModel, topicOwner);
+      if (authorFilterNote) {
+        const note = document.createElement("div");
+        note.className = "ld-topic-note";
+        note.textContent = authorFilterNote;
+        footer.appendChild(note);
+      }
+
       if (viewModel.hasHiddenPosts) {
         const note = document.createElement("div");
         note.className = "ld-topic-note";
@@ -2447,55 +2618,107 @@
       const moreAvailable = hasMoreTopicPosts(topic);
 
       if (state.settings.postMode === "first") {
-        return {
+        return applyAuthorFilterToViewModel({
           posts: posts.slice(0, 1),
           mode: "first",
           canAutoLoadMore: false,
           hasHiddenPosts: posts.length > 1 || moreAvailable
-        };
+        }, topic);
       }
 
       if (targetSpec?.targetPostNumber) {
-        return {
+        return applyAuthorFilterToViewModel({
           posts,
           mode: "targeted",
+          targetPostNumber: targetSpec.targetPostNumber,
           canAutoLoadMore: false,
           hasHiddenPosts: moreAvailable
-        };
+        }, topic);
       }
 
       if (state.settings.replyOrder !== "latestFirst" || posts.length <= 1) {
-        return {
+        return applyAuthorFilterToViewModel({
           posts,
           mode: "default",
           canAutoLoadMore: !targetSpec?.hasTarget,
           hasHiddenPosts: moreAvailable
-        };
+        }, topic);
       }
 
       if (topicHasCompletePostStream(topic)) {
-        return {
+        return applyAuthorFilterToViewModel({
           posts: [posts[0], ...posts.slice(1).reverse()],
           mode: "latestComplete",
           canAutoLoadMore: false,
           hasHiddenPosts: false
-        };
+        }, topic);
       }
 
       if (latestRepliesTopic) {
-        return {
+        return applyAuthorFilterToViewModel({
           posts: getLatestRepliesDisplayPosts(topic, latestRepliesTopic),
           mode: "latestWindow",
           canAutoLoadMore: false,
           hasHiddenPosts: moreAvailable
-        };
+        }, topic);
       }
 
-      return {
+      return applyAuthorFilterToViewModel({
         posts,
         mode: "latestUnavailable",
         canAutoLoadMore: false,
         hasHiddenPosts: moreAvailable
+      }, topic);
+    }
+
+    function applyAuthorFilterToViewModel(viewModel, topic) {
+      if (!viewModel || state.settings.authorFilter !== "topicOwner") {
+        return {
+          ...(viewModel || {}),
+          authorFilter: "all",
+          filterHiddenCount: 0,
+          filterUnavailable: false,
+          preservedTargetPostNumber: null
+        };
+      }
+
+      const topicOwner = getTopicOwnerIdentity(topic);
+      const sourcePosts = Array.isArray(viewModel.posts) ? viewModel.posts : [];
+      if (!topicOwner) {
+        return {
+          ...viewModel,
+          authorFilter: "topicOwner",
+          filterHiddenCount: 0,
+          filterUnavailable: true,
+          preservedTargetPostNumber: null
+        };
+      }
+
+      const targetPostNumber = viewModel.mode === "targeted" && Number.isFinite(viewModel.targetPostNumber)
+        ? Number(viewModel.targetPostNumber)
+        : null;
+      let preservedTargetPostNumber = null;
+      const filteredPosts = sourcePosts.filter((post) => {
+        if (isTopicOwnerPost(post, topicOwner)) {
+          return true;
+        }
+
+        if (targetPostNumber !== null && Number(post?.post_number) === targetPostNumber) {
+          preservedTargetPostNumber = targetPostNumber;
+          return true;
+        }
+
+        return false;
+      });
+
+      return {
+        ...viewModel,
+        posts: filteredPosts,
+        authorFilter: "topicOwner",
+        filterHiddenCount: Math.max(0, sourcePosts.length - filteredPosts.length),
+        filterUnavailable: false,
+        preservedTargetPostNumber,
+        hasHiddenPosts: Boolean(viewModel.hasHiddenPosts) || filteredPosts.length !== sourcePosts.length
       };
     }
 
@@ -2731,8 +2954,16 @@
       setReplyPanelOpen(true);
     }
 
+    function forEachReplyTriggerButton(callback) {
+      for (const button of [state.replyToggleButton, state.replyFabButton]) {
+        if (button instanceof HTMLButtonElement) {
+          callback(button);
+        }
+      }
+    }
+
     function setReplyPanelOpen(isOpen) {
-      if (!state.replyPanel || !state.replyButton) {
+      if (!state.replyPanel) {
         return;
       }
 
@@ -2741,7 +2972,9 @@
       }
 
       state.replyPanel.hidden = !isOpen;
-      state.replyButton.setAttribute("aria-expanded", String(isOpen));
+      forEachReplyTriggerButton((button) => {
+        button.setAttribute("aria-expanded", String(isOpen));
+      });
 
       if (!isOpen) {
         setReplyTarget(null);
@@ -2790,8 +3023,302 @@
       handleReplySubmit();
     }
 
+    function handleReplyTextareaPaste(event) {
+      if (
+        event.defaultPrevented ||
+        event.target !== state.replyTextarea ||
+        !state.currentTopic ||
+        state.isReplySubmitting
+      ) {
+        return;
+      }
+
+      const files = getReplyPasteImageFiles(event);
+      if (!files.length) {
+        return;
+      }
+
+      event.preventDefault();
+      queueReplyPasteUploads(files).catch(() => {});
+    }
+
+    function getReplyPasteImageFiles(event) {
+      const clipboardData = event?.clipboardData;
+      if (!clipboardData) {
+        return [];
+      }
+
+      const types = Array.from(clipboardData.types || []);
+      if (types.includes("text/plain") || types.includes("text/html")) {
+        return [];
+      }
+
+      return Array.from(clipboardData.files || [])
+        .map(normalizeReplyUploadFile)
+        .filter((file) => file instanceof File && isImageUploadFile(file));
+    }
+
+    function normalizeReplyUploadFile(file) {
+      if (!(file instanceof Blob)) {
+        return null;
+      }
+
+      const fileName = resolveReplyUploadFileName(file);
+      if (file instanceof File && file.name) {
+        return file;
+      }
+
+      if (typeof File === "function") {
+        return new File([file], fileName, {
+          type: file.type || "image/png",
+          lastModified: file instanceof File ? file.lastModified : Date.now()
+        });
+      }
+
+      try {
+        file.name = fileName;
+      } catch {
+        // 某些浏览器实现里 name 只读，忽略即可。
+      }
+
+      return file;
+    }
+
+    function resolveReplyUploadFileName(file) {
+      const originalName = typeof file?.name === "string"
+        ? file.name.trim()
+        : "";
+      if (originalName) {
+        return originalName;
+      }
+
+      return `image.${mimeTypeToFileExtension(file?.type)}`;
+    }
+
+    function mimeTypeToFileExtension(mimeType) {
+      const normalized = String(mimeType || "").toLowerCase();
+      if (normalized === "image/jpeg") {
+        return "jpg";
+      }
+
+      if (normalized === "image/svg+xml") {
+        return "svg";
+      }
+
+      const match = normalized.match(/^image\/([a-z0-9.+-]+)$/i);
+      if (!match) {
+        return "png";
+      }
+
+      return match[1].replace("svg+xml", "svg");
+    }
+
+    function isImageUploadFile(file) {
+      if (!(file instanceof File)) {
+        return false;
+      }
+
+      if (String(file.type || "").toLowerCase().startsWith("image/")) {
+        return true;
+      }
+
+      return isImageUploadName(file.name || "");
+    }
+
+    async function queueReplyPasteUploads(files) {
+      if (!state.replyTextarea || !state.currentTopic) {
+        return;
+      }
+
+      const sessionId = state.replyComposerSessionId;
+      const placeholders = insertReplyUploadPlaceholders(files);
+      if (!placeholders.length) {
+        return;
+      }
+
+      state.replyUploadPendingCount += placeholders.length;
+      syncReplyUI();
+      updateReplyUploadStatus();
+
+      const results = await Promise.allSettled(
+        placeholders.map((entry) => uploadReplyPasteFile(entry, sessionId))
+      );
+
+      if (sessionId !== state.replyComposerSessionId || state.replyUploadPendingCount > 0 || !state.replyStatus) {
+        return;
+      }
+
+      const successCount = results.filter((result) => result.status === "fulfilled").length;
+      const failures = results.filter((result) => result.status === "rejected");
+
+      if (!failures.length) {
+        state.replyStatus.textContent = successCount > 1
+          ? `已上传 ${successCount} 张图片，已插入回复内容。`
+          : "图片已上传，已插入回复内容。";
+        return;
+      }
+
+      if (!successCount) {
+        state.replyStatus.textContent = failures.length > 1
+          ? `图片上传失败（${failures.length} 张）：${failures.map((item) => item.reason?.message || "未知错误").join("；")}`
+          : `图片上传失败：${failures[0].reason?.message || "未知错误"}`;
+        return;
+      }
+
+      state.replyStatus.textContent = `图片上传完成：${successCount} 张成功，${failures.length} 张失败。`;
+    }
+
+    function insertReplyUploadPlaceholders(files) {
+      if (!state.replyTextarea) {
+        return [];
+      }
+
+      const entries = files.map((file) => buildReplyUploadPlaceholder(file));
+      insertReplyTextareaText(entries.map((entry) => entry.insertedText).join(""));
+      return entries;
+    }
+
+    function buildReplyUploadPlaceholder(file) {
+      const uploadId = `ld-upload-${Date.now()}-${++state.replyUploadSerial}`;
+      const visibleLabel = `[图片上传中：${sanitizeReplyUploadFileName(file.name || "image.png")}]`;
+      const marker = `${REPLY_UPLOAD_MARKER}${uploadId}${REPLY_UPLOAD_MARKER}${visibleLabel}${REPLY_UPLOAD_MARKER}/${uploadId}${REPLY_UPLOAD_MARKER}`;
+
+      return {
+        file,
+        marker,
+        insertedText: `${marker}\n`
+      };
+    }
+
+    function sanitizeReplyUploadFileName(fileName) {
+      return String(fileName || "image.png")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function insertReplyTextareaText(text) {
+      if (!state.replyTextarea) {
+        return;
+      }
+
+      const textarea = state.replyTextarea;
+      const start = Number.isFinite(textarea.selectionStart)
+        ? textarea.selectionStart
+        : textarea.value.length;
+      const end = Number.isFinite(textarea.selectionEnd)
+        ? textarea.selectionEnd
+        : start;
+
+      textarea.focus();
+      textarea.setRangeText(text, start, end, "end");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    async function uploadReplyPasteFile(entry, sessionId) {
+      const controller = new AbortController();
+      addReplyUploadController(controller);
+
+      try {
+        const upload = await createComposerUpload(entry.file, controller.signal, { pasted: true });
+        if (controller.signal.aborted || sessionId !== state.replyComposerSessionId) {
+          return upload;
+        }
+
+        const markdown = buildComposerUploadMarkdown(upload);
+        const inserted = replaceReplyUploadPlaceholder(entry.marker, `${markdown}\n`);
+        if (!inserted) {
+          insertReplyTextareaText(`\n${markdown}\n`);
+        }
+
+        return upload;
+      } catch (error) {
+        if (!controller.signal.aborted && sessionId === state.replyComposerSessionId) {
+          removeReplyUploadPlaceholder(entry.marker);
+        }
+
+        if (controller.signal.aborted) {
+          return null;
+        }
+
+        throw error;
+      } finally {
+        removeReplyUploadController(controller);
+        if (state.replyUploadPendingCount > 0) {
+          state.replyUploadPendingCount -= 1;
+        }
+
+        syncReplyUI();
+        if (sessionId === state.replyComposerSessionId && state.replyUploadPendingCount > 0) {
+          updateReplyUploadStatus();
+        }
+      }
+    }
+
+    function replaceReplyUploadPlaceholder(marker, replacement) {
+      return replaceReplyTextareaText(marker, replacement);
+    }
+
+    function removeReplyUploadPlaceholder(marker) {
+      replaceReplyTextareaText(marker, "");
+    }
+
+    function replaceReplyTextareaText(searchText, replacementText) {
+      if (!state.replyTextarea) {
+        return false;
+      }
+
+      const textarea = state.replyTextarea;
+      const start = textarea.value.indexOf(searchText);
+      if (start === -1) {
+        return false;
+      }
+
+      textarea.setRangeText(
+        replacementText,
+        start,
+        start + searchText.length,
+        "preserve"
+      );
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    }
+
+    function addReplyUploadController(controller) {
+      state.replyUploadControllers.push(controller);
+    }
+
+    function removeReplyUploadController(controller) {
+      state.replyUploadControllers = state.replyUploadControllers.filter((item) => item !== controller);
+    }
+
+    function cancelReplyUploads() {
+      for (const controller of state.replyUploadControllers) {
+        controller.abort();
+      }
+
+      state.replyUploadControllers = [];
+      state.replyUploadPendingCount = 0;
+    }
+
+    function updateReplyUploadStatus() {
+      if (!state.replyStatus || state.replyUploadPendingCount <= 0) {
+        return;
+      }
+
+      state.replyStatus.textContent = state.replyUploadPendingCount > 1
+        ? `正在上传 ${state.replyUploadPendingCount} 张图片...`
+        : "正在上传图片...";
+    }
+
     async function handleReplySubmit() {
       if (!state.currentTopic || state.isReplySubmitting || !state.replyTextarea || !state.replyStatus) {
+        return;
+      }
+
+      if (state.replyUploadPendingCount > 0) {
+        state.replyStatus.textContent = state.replyUploadPendingCount > 1
+          ? `还有 ${state.replyUploadPendingCount} 张图片正在上传，请稍候再发送。`
+          : "图片还在上传中，请稍候再发送。";
         return;
       }
 
@@ -2853,6 +3380,11 @@
       }
 
       if (state.settings.postMode === "first" || state.settings.replyOrder === "latestFirst" || state.currentTargetSpec?.hasTarget || state.isLoadingMorePosts || !hasMoreTopicPosts(state.currentTopic)) {
+        updateLoadMoreStatus();
+        return;
+      }
+
+      if (state.deferOwnerFilterAutoLoad && state.drawerBody.scrollTop <= 0) {
         updateLoadMoreStatus();
         return;
       }
@@ -3035,28 +3567,34 @@
     }
 
     function handleDrawerRootWheel(event) {
-      if (state.imagePreview?.hidden) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
         return;
       }
 
-      const target = event.target;
-      if (!(target instanceof Element) || !target.closest(".ld-image-preview-stage")) {
+      if (!state.imagePreview?.hidden && target.closest(".ld-image-preview-stage")) {
+        event.preventDefault();
+
+        const nextScale = clampImagePreviewScale(
+          state.imagePreviewScale + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP : -IMAGE_PREVIEW_SCALE_STEP)
+        );
+
+        if (nextScale === state.imagePreviewScale) {
+          return;
+        }
+
+        updateImagePreviewTransformOrigin(event.clientX, event.clientY);
+        state.imagePreviewScale = nextScale;
+        applyImagePreviewScale();
+        return;
+      }
+
+      if (event.deltaY <= 0 || !target.closest(".ld-drawer-body") || !shouldLoadMoreFromOwnerFilterWheel()) {
         return;
       }
 
       event.preventDefault();
-
-      const nextScale = clampImagePreviewScale(
-        state.imagePreviewScale + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP : -IMAGE_PREVIEW_SCALE_STEP)
-      );
-
-      if (nextScale === state.imagePreviewScale) {
-        return;
-      }
-
-      updateImagePreviewTransformOrigin(event.clientX, event.clientY);
-      state.imagePreviewScale = nextScale;
-      applyImagePreviewScale();
+      loadMorePosts().catch(() => {});
     }
 
     function resetImagePreviewScale() {
@@ -3127,6 +3665,7 @@
       state.currentLatestRepliesTopic = null;
       state.currentTargetSpec = null;
       state.currentResolvedTargetPostNumber = null;
+      state.deferOwnerFilterAutoLoad = false;
       state.isLoadingMorePosts = false;
       state.isRefreshingLatestReplies = false;
       state.isReplySubmitting = false;
@@ -3161,6 +3700,7 @@
       state.currentLatestRepliesTopic = null;
       state.currentTargetSpec = null;
       state.currentResolvedTargetPostNumber = null;
+      state.deferOwnerFilterAutoLoad = false;
       state.isLoadingMorePosts = false;
       state.isRefreshingLatestReplies = false;
       state.isReplySubmitting = false;
@@ -3217,6 +3757,12 @@
       }
     }
 
+    function shouldRefreshCurrentTopicOnRepeatOpen() {
+      return canRefreshLatestReplies()
+        && !state.isRefreshingLatestReplies
+        && !state.abortController;
+    }
+
     function refreshCurrentView() {
       if (!state.currentUrl) {
         return;
@@ -3226,17 +3772,15 @@
         if (state.abortController) {
           state.abortController.abort();
           state.abortController = null;
-          if (!state.currentViewTracked) {
-            state.currentTrackRequest = null;
-            state.currentTrackRequestKey = "";
-          }
         }
 
         if (!state.currentViewTracked) {
-          ensureTrackedTopicVisit(state.currentUrl, state.currentTopicIdHint).catch(() => {});
+          state.currentTrackRequest = null;
+          state.currentTrackRequestKey = "";
         }
 
         renderIframeFallback(state.currentUrl, state.currentFallbackTitle, null, true);
+        syncLatestRepliesRefreshUI();
         return;
       }
 
@@ -3365,6 +3909,27 @@
       }
 
       return "";
+    }
+
+    function buildAuthorFilterNote(viewModel, topicOwner) {
+      if (viewModel.authorFilter !== "topicOwner") {
+        return "";
+      }
+
+      if (viewModel.filterUnavailable || !topicOwner) {
+        return `当前已切到\u201C只看楼主\u201D模式，但这次没识别出楼主身份，暂按当前结果显示。`;
+      }
+
+      const ownerLabel = topicOwner.displayUsername ? `@${topicOwner.displayUsername}` : "楼主";
+      if (Number.isFinite(viewModel.preservedTargetPostNumber)) {
+        return `当前为\u201C只看楼主\u201D模式，已保留当前定位的 #${viewModel.preservedTargetPostNumber}，其余仅显示 ${ownerLabel} 的发言。`;
+      }
+
+      if (!viewModel.posts.length && viewModel.canAutoLoadMore) {
+        return `当前为\u201C只看楼主\u201D模式，已加载范围内还没有 ${ownerLabel} 的更多发言，继续下滑会继续尝试加载。`;
+      }
+
+      return `当前为\u201C只看楼主\u201D模式，仅显示 ${ownerLabel} 的发言。`;
     }
 
     function getLatestRepliesTopicUrl(topicUrl, topicIdHint = null) {
@@ -3999,6 +4564,88 @@
       }
     }
 
+    async function createComposerUpload(file, signal, options = {}) {
+      const csrfToken = getCsrfToken();
+      if (!csrfToken) {
+        throw new Error("未找到登录令牌，请刷新页面后重试");
+      }
+
+      const formData = new FormData();
+      formData.set("upload_type", "composer");
+      formData.set("file", file, file.name || "image.png");
+      if (options.pasted) {
+        formData.set("pasted", "true");
+      }
+
+      const response = await fetch(`${location.origin}/uploads.json`, {
+        method: "POST",
+        credentials: "include",
+        signal,
+        headers: {
+          Accept: "application/json",
+          "X-CSRF-Token": csrfToken
+        },
+        body: formData
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("json")
+        ? await response.json()
+        : null;
+
+      if (!response.ok) {
+        const message = Array.isArray(data?.errors) && data.errors.length > 0
+          ? data.errors.join("；")
+          : (data?.message || data?.error || `Unexpected response: ${response.status}`);
+        throw new Error(message);
+      }
+
+      if (!data || typeof data !== "object") {
+        throw new Error(`Unexpected response: ${response.status}`);
+      }
+
+      return data;
+    }
+
+    function buildComposerUploadMarkdown(upload) {
+      const fileName = upload?.original_filename || "image.png";
+      const uploadUrl = upload?.short_url || upload?.url || "";
+      if (!uploadUrl) {
+        throw new Error("上传成功但未返回可用图片地址");
+      }
+
+      if (isImageUploadName(fileName)) {
+        return buildComposerImageMarkdown(upload, uploadUrl);
+      }
+
+      return `[${fileName}|attachment](${uploadUrl})`;
+    }
+
+    function buildComposerImageMarkdown(upload, uploadUrl) {
+      const altText = markdownNameFromFileName(upload?.original_filename || "image.png");
+      const width = Number(upload?.thumbnail_width || upload?.width || 0);
+      const height = Number(upload?.thumbnail_height || upload?.height || 0);
+      const sizeSegment = width > 0 && height > 0
+        ? `|${width}x${height}`
+        : "";
+
+      return `![${altText}${sizeSegment}](${uploadUrl})`;
+    }
+
+    function markdownNameFromFileName(fileName) {
+      const normalized = String(fileName || "").trim();
+      const dotIndex = normalized.lastIndexOf(".");
+      const baseName = dotIndex > 0
+        ? normalized.slice(0, dotIndex)
+        : normalized;
+
+      return (baseName || "image").replace(/[\[\]|]/g, "");
+    }
+
+    function isImageUploadName(fileName) {
+      return /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(String(fileName || ""));
+    }
+
     function closeAllPopovers() {
       state.root?.querySelectorAll(".ld-reactions-popover, .ld-flag-popover").forEach((p) => {
         p.setAttribute("hidden", "");
@@ -4590,6 +5237,15 @@
           settings.drawerMode = DEFAULT_SETTINGS.drawerMode;
         }
 
+        if (settings.authorFilter !== "all" && settings.authorFilter !== "topicOwner") {
+          settings.authorFilter = DEFAULT_SETTINGS.authorFilter;
+        }
+
+        if (settings.floatingReplyButton !== "off" && settings.floatingReplyButton !== "on") {
+          settings.floatingReplyButton = DEFAULT_SETTINGS.floatingReplyButton;
+        }
+
+        settings.postBodyFontSize = clampPostBodyFontSize(settings.postBodyFontSize);
         settings.drawerWidthCustom = clampDrawerWidth(settings.drawerWidthCustom);
         return settings;
       } catch {
@@ -4602,9 +5258,12 @@
     }
 
     function resetReplyComposer() {
+      state.replyComposerSessionId += 1;
+      cancelReplyUploads();
+
       if (state.replyTextarea) {
         state.replyTextarea.value = "";
-        state.replyTextarea.placeholder = "写点什么... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送";
+        state.replyTextarea.placeholder = buildReplyTextareaPlaceholder();
       }
 
       if (state.replyStatus) {
@@ -4619,21 +5278,32 @@
     function syncReplyUI() {
       const hasTopic = Boolean(state.currentTopic?.id);
       const isTargetedReply = Number.isFinite(state.replyTargetPostNumber);
-
+      const isReplyUploading = state.replyUploadPendingCount > 0;
+      const hasCurrentUrl = Boolean(state.currentUrl);
       const isIframeMode = state.root?.classList.contains(IFRAME_MODE_CLASS);
+      const isSettingsOpen = !state.settingsPanel?.hidden;
 
-      if (state.replyButton) {
-        state.replyButton.hidden = !Boolean(state.currentUrl) || isIframeMode;
-        state.replyButton.disabled = !hasTopic || state.isReplySubmitting;
-        state.replyButton.classList.toggle("is-disabled", !hasTopic || state.isReplySubmitting);
+      if (state.replyToggleButton) {
+        state.replyToggleButton.hidden = !hasCurrentUrl || isIframeMode;
+        state.replyToggleButton.disabled = !hasTopic || state.isReplySubmitting;
+        state.replyToggleButton.classList.toggle("is-disabled", !hasTopic || state.isReplySubmitting);
+      }
+
+      if (state.replyFabButton) {
+        state.replyFabButton.hidden = !hasCurrentUrl
+          || isIframeMode
+          || isSettingsOpen
+          || state.settings.floatingReplyButton !== "on";
+        state.replyFabButton.disabled = !hasTopic || state.isReplySubmitting;
+        state.replyFabButton.classList.toggle("is-disabled", !hasTopic || state.isReplySubmitting);
       }
 
       if (state.replyTextarea) {
         state.replyTextarea.disabled = !hasTopic || state.isReplySubmitting;
         if (hasTopic) {
           state.replyTextarea.placeholder = isTargetedReply
-            ? `回复 ${state.replyTargetLabel}... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送`
-            : `回复《${state.currentTopic.title || state.currentFallbackTitle || "当前主题"}》... 支持 Markdown。Ctrl+Enter 或 Cmd+Enter 可发送`;
+            ? buildReplyTextareaPlaceholder(`回复 ${state.replyTargetLabel}`)
+            : buildReplyTextareaPlaceholder(`回复《${state.currentTopic.title || state.currentFallbackTitle || "当前主题"}》`);
         }
       }
 
@@ -4644,13 +5314,23 @@
       }
 
       if (state.replySubmitButton) {
-        state.replySubmitButton.disabled = !hasTopic || state.isReplySubmitting;
-        state.replySubmitButton.textContent = state.isReplySubmitting ? "发送中..." : "发送回复";
+        state.replySubmitButton.disabled = !hasTopic || state.isReplySubmitting || isReplyUploading;
+        state.replySubmitButton.textContent = state.isReplySubmitting
+          ? "发送中..."
+          : (isReplyUploading
+            ? (state.replyUploadPendingCount > 1
+              ? `上传 ${state.replyUploadPendingCount} 张图片中...`
+              : "图片上传中...")
+            : "发送回复");
       }
 
       if (state.replyCancelButton) {
         state.replyCancelButton.disabled = state.isReplySubmitting;
       }
+    }
+
+    function buildReplyTextareaPlaceholder(prefix = "写点什么") {
+      return `${prefix}... 支持 Markdown，可直接粘贴图片自动上传。Ctrl+Enter 或 Cmd+Enter 可发送`;
     }
 
     function syncSettingsUI() {
@@ -4661,8 +5341,36 @@
       for (const control of state.settingsPanel.querySelectorAll("[data-setting]")) {
         const key = control.dataset.setting;
         if (key && key in state.settings) {
-          control.value = state.settings[key];
+          control.value = String(state.settings[key]);
         }
+      }
+
+      syncPostBodyFontSizeValue();
+      syncPostBodyFontSizeControlState();
+    }
+
+    function syncPostBodyFontSizeValue() {
+      if (state.postBodyFontSizeValue) {
+        state.postBodyFontSizeValue.textContent = `${clampPostBodyFontSize(state.settings.postBodyFontSize)}px`;
+      }
+    }
+
+    function syncPostBodyFontSizeControlState() {
+      const isSmartPreview = state.settings.previewMode === "smart";
+
+      if (state.postBodyFontSizeField) {
+        state.postBodyFontSizeField.classList.toggle("is-disabled", !isSmartPreview);
+        state.postBodyFontSizeField.setAttribute("aria-disabled", String(!isSmartPreview));
+      }
+
+      if (state.postBodyFontSizeControl) {
+        state.postBodyFontSizeControl.disabled = !isSmartPreview;
+      }
+
+      if (state.postBodyFontSizeHint) {
+        state.postBodyFontSizeHint.textContent = isSmartPreview
+          ? "只调整帖子正文和代码字号，不影响标题和按钮"
+          : "仅智能预览可用；当前整页模式下不会改变 iframe 里的字号。";
       }
     }
 
@@ -4682,17 +5390,36 @@
       }
 
       if (isOpen) {
+        setReplyPanelOpen(false);
+        syncSettingsUI();
         updateSettingsPopoverPosition();
         queueMicrotask(() => state.settingsCard?.querySelector(".ld-setting-control")?.focus());
       }
 
       state.settingsPanel.hidden = !isOpen;
       state.settingsToggle.setAttribute("aria-expanded", String(isOpen));
+      syncReplyUI();
+    }
+
+    function handleSettingsInput(event) {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.type !== "range") {
+        return;
+      }
+
+      const key = target.dataset.setting;
+      if (key !== "postBodyFontSize") {
+        return;
+      }
+
+      state.settings.postBodyFontSize = clampPostBodyFontSize(target.value);
+      target.value = String(state.settings.postBodyFontSize);
+      applyPostBodyFontSize();
     }
 
     function handleSettingsChange(event) {
       const target = event.target;
-      if (!(target instanceof HTMLSelectElement)) {
+      if (!(target instanceof HTMLSelectElement) && !(target instanceof HTMLInputElement)) {
         return;
       }
 
@@ -4701,8 +5428,16 @@
         return;
       }
 
-      state.settings[key] = target.value;
+      state.settings[key] = key === "postBodyFontSize"
+        ? clampPostBodyFontSize(target.value)
+        : target.value;
+      target.value = String(state.settings[key]);
       saveSettings();
+
+      if (key === "postBodyFontSize") {
+        applyPostBodyFontSize();
+        return;
+      }
 
       if (key === "drawerWidth") {
         applyDrawerWidth();
@@ -4717,6 +5452,12 @@
         return;
       }
 
+      if (key === "floatingReplyButton") {
+        syncReplyUI();
+        setSettingsPanelOpen(false);
+        return;
+      }
+
       refreshCurrentView();
       setSettingsPanelOpen(false);
     }
@@ -4725,8 +5466,10 @@
       state.settings = { ...DEFAULT_SETTINGS };
       syncSettingsUI();
       saveSettings();
+      applyPostBodyFontSize();
       applyDrawerWidth();
       applyDrawerMode();
+      syncReplyUI();
       refreshCurrentView();
       setSettingsPanelOpen(false);
     }
@@ -4745,6 +5488,14 @@
       scheduleTopicTrackerPositionSync();
     }
 
+    function applyPostBodyFontSize() {
+      document.documentElement.style.setProperty(
+        "--ld-post-body-font-size",
+        `${clampPostBodyFontSize(state.settings.postBodyFontSize)}px`
+      );
+      syncPostBodyFontSizeValue();
+    }
+
     function applyDrawerMode() {
       const isOverlay = state.settings.drawerMode === "overlay";
       document.body.classList.toggle("ld-drawer-mode-overlay", isOverlay);
@@ -4759,6 +5510,16 @@
       }
 
       return Math.min(Math.max(Math.round(numeric), 320), maxWidth);
+    }
+
+    function clampPostBodyFontSize(value) {
+      const numeric = Number(value);
+
+      if (!Number.isFinite(numeric)) {
+        return DEFAULT_SETTINGS.postBodyFontSize;
+      }
+
+      return Math.min(Math.max(Math.round(numeric), POST_BODY_FONT_SIZE_MIN), POST_BODY_FONT_SIZE_MAX);
     }
 
     function startDrawerResize(event) {
@@ -4804,12 +5565,35 @@
       applyDrawerWidth();
     }
 
+    function shouldDeferOwnerFilterAutoLoad(viewModel) {
+      return Boolean(
+        viewModel
+        && viewModel.authorFilter === "topicOwner"
+        && viewModel.canAutoLoadMore
+        && Number(viewModel.filterHiddenCount || 0) > 0
+      );
+    }
+
+    function shouldLoadMoreFromOwnerFilterWheel() {
+      if (!state.deferOwnerFilterAutoLoad || !state.drawerBody || !state.currentTopic || state.isLoadingMorePosts) {
+        return false;
+      }
+
+      if (state.settings.postMode === "first" || state.settings.replyOrder === "latestFirst" || state.currentTargetSpec?.hasTarget || !hasMoreTopicPosts(state.currentTopic)) {
+        return false;
+      }
+
+      return state.drawerBody.scrollHeight - state.drawerBody.clientHeight <= LOAD_MORE_TRIGGER_OFFSET;
+    }
+
     function updateSettingsPopoverPosition() {
       if (!state.header || !state.settingsPanel) {
         return;
       }
 
-      state.root.style.setProperty("--ld-settings-top", `${state.header.offsetHeight + 8}px`);
+      const offset = `${state.header.offsetHeight + 8}px`;
+      state.root.style.setProperty("--ld-settings-top", offset);
+      state.root.style.setProperty("--ld-reply-panel-top", offset);
     }
 
     function scheduleTopicTrackerPositionSync() {
