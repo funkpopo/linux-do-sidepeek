@@ -544,6 +544,11 @@
       highlightLink(activeLink);
       syncNavigationState();
 
+      if (shouldRefreshCurrentTopicOnRepeatOpen()) {
+        handleLatestRepliesRefresh();
+        return;
+      }
+
       if (!state.currentViewTracked && !state.currentTrackRequest) {
         loadTopic(topicUrl, fallbackTitle, topicIdHint);
       }
@@ -2331,6 +2336,12 @@
       state.isRefreshingLatestReplies = false;
       syncLatestRepliesRefreshUI();
     }
+  }
+
+  function shouldRefreshCurrentTopicOnRepeatOpen() {
+    return canRefreshLatestReplies()
+      && !state.isRefreshingLatestReplies
+      && !state.abortController;
   }
 
   function refreshCurrentView() {

@@ -757,6 +757,35 @@ EOF
   ab_eval "$script"
 }
 
+click_active_topic_link() {
+  local script
+  script=$(cat <<'EOF'
+(() => {
+  const link = document.querySelector("#main-outlet .ld-drawer-topic-link-active");
+  const refreshButton = document.querySelector("#ld-drawer-root .ld-drawer-refresh");
+  if (!(link instanceof HTMLAnchorElement)) {
+    return { ok: false, reason: "active-topic-link-not-found" };
+  }
+
+  const href = link.href;
+  const text = link.textContent?.trim() || null;
+  link.click();
+  return {
+    ok: true,
+    href,
+    text,
+    refreshExists: refreshButton instanceof HTMLButtonElement,
+    refreshHidden: refreshButton?.hidden ?? null,
+    refreshDisabled: refreshButton?.disabled ?? null,
+    refreshText: refreshButton?.textContent?.trim() || null,
+    pageUrl: location.href
+  };
+})()
+EOF
+)
+  ab_eval "$script"
+}
+
 run_001() {
   local case_id="AGENT-CHROME-001"
   local click_result state title clicked_text
@@ -985,7 +1014,7 @@ run_009() {
 
 run_010() {
   local case_id="AGENT-CHROME-010"
-  local open_result original_settings setup_result before click after final_state
+  local open_result original_settings setup_result before click after repeat_click repeat_after final_state
   local passed=0
   local detail=""
 
@@ -1020,6 +1049,10 @@ run_010() {
   if ! after=$(wait_for_refresh_idle); then
     :
   fi
+  repeat_click=$(click_active_topic_link)
+  if ! repeat_after=$(wait_for_refresh_idle); then
+    :
+  fi
   final_state=$(drawer_state)
   restore_settings_subset "$original_settings"
 
@@ -1035,12 +1068,22 @@ run_010() {
     && [ "$(echo "$after" | jq -r '.hidden')" = "false" ] \
     && [ "$(echo "$after" | jq -r '.disabled')" = "false" ] \
     && [ "$(echo "$after" | jq -r '.text // empty')" = "刷新" ] \
+    && [ "$(echo "$repeat_click" | jq -r '.ok')" = "true" ] \
+    && [ "$(echo "$repeat_click" | jq -r '.refreshExists')" = "true" ] \
+    && [ "$(echo "$repeat_click" | jq -r '.refreshHidden')" = "false" ] \
+    && [ "$(echo "$repeat_click" | jq -r '.refreshDisabled')" = "true" ] \
+    && [ "$(echo "$repeat_click" | jq -r '.refreshText // empty')" = "刷新中..." ] \
+    && [ "$(echo "$repeat_click" | jq -r '.pageUrl // empty')" = "$BASE_URL" ] \
+    && [ "$(echo "$repeat_after" | jq -r '.exists')" = "true" ] \
+    && [ "$(echo "$repeat_after" | jq -r '.hidden')" = "false" ] \
+    && [ "$(echo "$repeat_after" | jq -r '.disabled')" = "false" ] \
+    && [ "$(echo "$repeat_after" | jq -r '.text // empty')" = "刷新" ] \
     && [ "$(echo "$final_state" | jq -r '.pageUrl // empty')" = "$BASE_URL" ] \
     && [ "$(echo "$final_state" | jq -r '.pageOpen')" = "true" ]; then
     passed=1
-    detail="title=$(echo "$after" | jq -r '.title // empty')"
+    detail="title=$(echo "$repeat_after" | jq -r '.title // empty')"
   else
-    detail="setup=$(echo "$setup_result" | jq -c '.') before=$(echo "$before" | jq -c '{exists, hidden, disabled, text}') click=$(echo "$click" | jq -c '{ok, hidden, disabled, text, pageUrl}') after=$(echo "$after" | jq -c '{exists, hidden, disabled, text}')"
+    detail="setup=$(echo "$setup_result" | jq -c '.') before=$(echo "$before" | jq -c '{exists, hidden, disabled, text}') click=$(echo "$click" | jq -c '{ok, hidden, disabled, text, pageUrl}') after=$(echo "$after" | jq -c '{exists, hidden, disabled, text}') repeat_click=$(echo "$repeat_click" | jq -c '{ok, reason, refreshExists, refreshHidden, refreshDisabled, refreshText, pageUrl}') repeat_after=$(echo "$repeat_after" | jq -c '{exists, hidden, disabled, text}')"
   fi
 
   if [ "$passed" -eq 1 ]; then
