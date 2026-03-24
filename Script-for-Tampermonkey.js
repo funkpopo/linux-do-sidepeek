@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.6.0
+// @version      0.6.1
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -50,6 +50,12 @@
     user-select: none !important;
   }
 
+  body.ld-reply-panel-dragging,
+  body.ld-reply-panel-dragging * {
+    cursor: grabbing !important;
+    user-select: none !important;
+  }
+
   #ld-drawer-root {
     position: fixed;
     inset: 0 0 0 auto;
@@ -58,6 +64,13 @@
     transform: translateX(100%);
     transition: transform 0.2s ease;
     color: var(--primary, #1f2937);
+    pointer-events: none;
+  }
+
+  #ld-image-preview-root {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
     pointer-events: none;
   }
 
@@ -287,10 +300,10 @@
     overflow: hidden;
   }
 
-  #ld-drawer-root .ld-image-preview {
-    position: absolute;
+  #ld-image-preview-root .ld-image-preview {
+    position: fixed;
     inset: 0;
-    z-index: 8;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -299,13 +312,14 @@
     backdrop-filter: blur(6px);
     opacity: 1;
     animation: ld-image-preview-fade-in 180ms ease-out;
+    pointer-events: auto;
   }
 
-  #ld-drawer-root .ld-image-preview[hidden] {
+  #ld-image-preview-root .ld-image-preview[hidden] {
     display: none !important;
   }
 
-  #ld-drawer-root .ld-image-preview-close {
+  #ld-image-preview-root .ld-image-preview-close {
     position: absolute;
     top: 14px;
     right: 18px;
@@ -320,13 +334,13 @@
     transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
   }
 
-  #ld-drawer-root .ld-image-preview-close:hover {
+  #ld-image-preview-root .ld-image-preview-close:hover {
     background: rgba(15, 23, 42, 0.58);
     border-color: rgba(255, 255, 255, 0.44);
     transform: translateY(-1px);
   }
 
-  #ld-drawer-root .ld-image-preview-stage {
+  #ld-image-preview-root .ld-image-preview-stage {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -335,7 +349,7 @@
     overflow: hidden;
   }
 
-  #ld-drawer-root .ld-image-preview-image {
+  #ld-image-preview-root .ld-image-preview-image {
     display: block;
     max-width: 100%;
     max-height: 100%;
@@ -348,18 +362,19 @@
     transition: opacity 0.2s ease, transform 0.24s ease, box-shadow 0.24s ease;
     transform-origin: center center;
     will-change: transform;
+    cursor: zoom-out;
   }
 
-  #ld-drawer-root .ld-image-preview-image.is-ready {
+  #ld-image-preview-root .ld-image-preview-image.is-ready {
     opacity: 1;
     transform: translateY(0) scale(var(--ld-image-preview-scale, 1));
   }
 
-  #ld-drawer-root .ld-image-preview.is-zoomed {
+  #ld-image-preview-root .ld-image-preview.is-zoomed {
     cursor: zoom-out;
   }
 
-  #ld-drawer-root .ld-image-preview.is-zoomed .ld-image-preview-image {
+  #ld-image-preview-root .ld-image-preview.is-zoomed .ld-image-preview-image {
     box-shadow: 0 24px 54px rgba(0, 0, 0, 0.44);
   }
 
@@ -744,6 +759,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+  }
+
+  #ld-drawer-root .ld-reply-panel-head {
+    cursor: grab;
+  }
+
+  #ld-drawer-root .ld-drawer-reply-panel.is-dragging .ld-reply-panel-head {
+    cursor: grabbing;
   }
 
   #ld-drawer-root .ld-reply-panel-title {
@@ -1417,14 +1440,14 @@
       width: 100vw;
     }
 
-    #ld-drawer-root .ld-image-preview {
+    #ld-image-preview-root .ld-image-preview {
       padding: max(18px, env(safe-area-inset-top, 0px) + 8px)
         12px
         max(12px, env(safe-area-inset-bottom, 0px) + 8px);
       align-items: stretch;
     }
 
-    #ld-drawer-root .ld-image-preview-close {
+    #ld-image-preview-root .ld-image-preview-close {
       top: max(10px, env(safe-area-inset-top, 0px) + 2px);
       right: 12px;
       padding: 8px 12px;
@@ -1432,13 +1455,13 @@
       backdrop-filter: blur(10px);
     }
 
-    #ld-drawer-root .ld-image-preview-stage {
+    #ld-image-preview-root .ld-image-preview-stage {
       align-items: center;
       padding-top: 40px;
       padding-bottom: 6px;
     }
 
-    #ld-drawer-root .ld-image-preview-image {
+    #ld-image-preview-root .ld-image-preview-image {
       max-width: 100%;
       max-height: calc(100dvh - 88px);
       border-radius: 12px;
@@ -1486,12 +1509,16 @@
       width: auto;
       max-height: calc(100dvh - max(72px, env(safe-area-inset-bottom, 0px) + 56px) - 16px);
     }
+
+    #ld-drawer-root .ld-reply-panel-head {
+      cursor: default;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    #ld-drawer-root .ld-image-preview,
-    #ld-drawer-root .ld-image-preview-close,
-    #ld-drawer-root .ld-image-preview-image {
+    #ld-image-preview-root .ld-image-preview,
+    #ld-image-preview-root .ld-image-preview-close,
+    #ld-image-preview-root .ld-image-preview-image {
       animation: none;
       transition: none;
     }
@@ -1509,6 +1536,7 @@
     const UPDATE_DISMISS_KEY = "ld-update-dismiss-v1";
 
     const ROOT_ID = "ld-drawer-root";
+    const IMAGE_PREVIEW_ROOT_ID = "ld-image-preview-root";
     const PAGE_OPEN_CLASS = "ld-drawer-page-open";
     const PAGE_IFRAME_OPEN_CLASS = "ld-drawer-page-iframe-open";
     const ACTIVE_LINK_CLASS = "ld-drawer-topic-link-active";
@@ -1531,7 +1559,8 @@
       floatingReplyButton: "off",
       drawerWidth: "narrow",
       drawerWidthCustom: 720,
-      drawerMode: "overlay"
+      drawerMode: "overlay",
+      replyPanelPosition: null
     };
     const DRAWER_WIDTHS = {
       narrow: "clamp(320px, 34vw, 680px)",
@@ -1598,16 +1627,19 @@
       header: null,
       title: null,
       meta: null,
+      replyPanelMain: null,
       drawerBody: null,
       content: null,
       replyToggleButton: null,
       replyFabButton: null,
       replyPanel: null,
+      replyPanelHead: null,
       replyPanelTitle: null,
       replyTextarea: null,
       replySubmitButton: null,
       replyCancelButton: null,
       replyStatus: null,
+      imagePreviewRoot: null,
       imagePreview: null,
       imagePreviewImage: null,
       imagePreviewCloseButton: null,
@@ -1652,9 +1684,16 @@
       lastLocation: location.href,
       settings: loadSettings(),
       isResizing: false,
+      isReplyPanelDragging: false,
       isLoadingMorePosts: false,
       isRefreshingLatestReplies: false,
       isReplySubmitting: false,
+      replyPanelDragPointerId: null,
+      replyPanelDragOffsetX: 0,
+      replyPanelDragOffsetY: 0,
+      replyPanelDragMoved: false,
+      replyPanelDragLastPosition: null,
+      suppressReplyPanelClick: false,
       loadMoreError: "",
       loadMoreStatus: null,
       hasShownPreviewNotice: false,
@@ -1830,35 +1869,44 @@
                 <button class="ld-reply-action ld-reply-action-primary" type="button" data-action="submit">发送回复</button>
               </div>
             </div>
-            <div class="ld-image-preview" hidden aria-hidden="true">
-              <button class="ld-image-preview-close" type="button" aria-label="关闭图片预览">关闭</button>
-              <div class="ld-image-preview-stage">
-                <img class="ld-image-preview-image" alt="图片预览" />
-              </div>
-            </div>
           </div>
         </div>
       `;
 
-      document.body.appendChild(root);
+      const imagePreviewRoot = document.createElement("div");
+      imagePreviewRoot.id = IMAGE_PREVIEW_ROOT_ID;
+      imagePreviewRoot.setAttribute("aria-hidden", "true");
+      imagePreviewRoot.innerHTML = `
+        <div class="ld-image-preview" hidden aria-hidden="true">
+          <button class="ld-image-preview-close" type="button" aria-label="关闭图片预览">关闭</button>
+          <div class="ld-image-preview-stage">
+            <img class="ld-image-preview-image" alt="图片预览" />
+          </div>
+        </div>
+      `;
+
+      document.body.append(root, imagePreviewRoot);
 
       state.root = root;
       state.header = root.querySelector(".ld-drawer-header");
       state.title = root.querySelector(".ld-drawer-title");
       state.meta = root.querySelector(".ld-drawer-meta");
+      state.replyPanelMain = root.querySelector(".ld-drawer-main");
       state.drawerBody = root.querySelector(".ld-drawer-body");
       state.content = root.querySelector(".ld-drawer-content");
       state.replyToggleButton = root.querySelector(".ld-drawer-reply-toggle");
       state.replyFabButton = root.querySelector(".ld-drawer-reply-fab");
       state.replyPanel = root.querySelector(".ld-drawer-reply-panel");
+      state.replyPanelHead = root.querySelector(".ld-reply-panel-head");
       state.replyPanelTitle = root.querySelector(".ld-reply-panel-title");
       state.replyTextarea = root.querySelector(".ld-reply-textarea");
       state.replySubmitButton = root.querySelector('[data-action="submit"]');
       state.replyCancelButton = root.querySelector('[data-action="cancel"]');
       state.replyStatus = root.querySelector(".ld-reply-status");
-      state.imagePreview = root.querySelector(".ld-image-preview");
-      state.imagePreviewImage = root.querySelector(".ld-image-preview-image");
-      state.imagePreviewCloseButton = root.querySelector(".ld-image-preview-close");
+      state.imagePreviewRoot = imagePreviewRoot;
+      state.imagePreview = imagePreviewRoot.querySelector(".ld-image-preview");
+      state.imagePreviewImage = imagePreviewRoot.querySelector(".ld-image-preview-image");
+      state.imagePreviewCloseButton = imagePreviewRoot.querySelector(".ld-image-preview-close");
       state.openInTab = root.querySelector(".ld-drawer-link");
       state.settingsPanel = root.querySelector(".ld-drawer-settings");
       state.settingsCard = root.querySelector(".ld-drawer-settings-card");
@@ -1888,8 +1936,11 @@
       root.querySelector(".ld-reply-panel-close").addEventListener("click", () => setReplyPanelOpen(false));
       state.replyTextarea.addEventListener("keydown", handleReplyTextareaKeydown);
       state.replyTextarea.addEventListener("paste", handleReplyTextareaPaste);
+      state.replyPanelHead.addEventListener("pointerdown", startReplyPanelDrag);
       root.addEventListener("click", handleDrawerRootClick);
       root.addEventListener("wheel", handleDrawerRootWheel, { passive: false });
+      imagePreviewRoot.addEventListener("click", handleImagePreviewClick);
+      imagePreviewRoot.addEventListener("wheel", handleImagePreviewWheel, { passive: false });
       state.drawerBody.addEventListener("scroll", handleDrawerBodyScroll, { passive: true });
       state.settingsPanel.addEventListener("click", handleSettingsPanelClick);
       state.settingsPanel.addEventListener("input", handleSettingsInput);
@@ -1915,6 +1966,9 @@
       document.addEventListener("pointermove", handleDrawerResizeMove, true);
       document.addEventListener("pointerup", stopDrawerResize, true);
       document.addEventListener("pointercancel", stopDrawerResize, true);
+      document.addEventListener("pointermove", handleReplyPanelDragMove, true);
+      document.addEventListener("pointerup", stopReplyPanelDrag, true);
+      document.addEventListener("pointercancel", stopReplyPanelDrag, true);
       window.addEventListener("resize", handleWindowResize, true);
       window.addEventListener("scroll", handleWindowScroll, { capture: true, passive: true });
     }
@@ -1928,8 +1982,19 @@
         return;
       }
 
+      if (state.suppressReplyPanelClick) {
+        state.suppressReplyPanelClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
       const target = event.target;
       if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (!state.imagePreview?.hidden && target.closest(`#${IMAGE_PREVIEW_ROOT_ID}`)) {
         return;
       }
 
@@ -2971,17 +3036,227 @@
         return;
       }
 
+      if (!isOpen) {
+        stopReplyPanelDrag();
+      }
+
       state.replyPanel.hidden = !isOpen;
       forEachReplyTriggerButton((button) => {
         button.setAttribute("aria-expanded", String(isOpen));
       });
 
       if (!isOpen) {
+        clearReplyPanelPositionStyles();
         setReplyTarget(null);
         return;
       }
 
+      applyReplyPanelPosition();
       queueMicrotask(() => state.replyTextarea?.focus());
+    }
+
+    function startReplyPanelDrag(event) {
+      const target = event.target;
+      if (
+        event.button !== 0
+        || window.innerWidth <= 720
+        || !state.replyPanel
+        || state.replyPanel.hidden
+        || !state.replyPanelMain
+        || !state.replyPanelHead
+        || !(target instanceof Element)
+        || Boolean(target.closest("button, a, input, textarea, select, label"))
+      ) {
+        return;
+      }
+
+      const panelRect = state.replyPanel.getBoundingClientRect();
+      const containerRect = state.replyPanelMain.getBoundingClientRect();
+      if (panelRect.width <= 0 || panelRect.height <= 0 || containerRect.width <= 0 || containerRect.height <= 0) {
+        return;
+      }
+
+      const currentPosition = clampReplyPanelPosition({
+        left: panelRect.left - containerRect.left,
+        top: panelRect.top - containerRect.top
+      });
+      if (!currentPosition) {
+        return;
+      }
+
+      event.preventDefault();
+      state.isReplyPanelDragging = true;
+      state.replyPanelDragPointerId = event.pointerId;
+      state.replyPanelDragOffsetX = event.clientX - panelRect.left;
+      state.replyPanelDragOffsetY = event.clientY - panelRect.top;
+      state.replyPanelDragMoved = false;
+      state.replyPanelDragLastPosition = currentPosition;
+      document.body.classList.add("ld-reply-panel-dragging");
+      state.replyPanel.classList.add("is-dragging");
+      setReplyPanelInlinePosition(currentPosition);
+      state.replyPanelHead.setPointerCapture?.(event.pointerId);
+    }
+
+    function handleReplyPanelDragMove(event) {
+      if (
+        !state.isReplyPanelDragging
+        || event.pointerId !== state.replyPanelDragPointerId
+        || !state.replyPanelMain
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      const containerRect = state.replyPanelMain.getBoundingClientRect();
+      const nextPosition = clampReplyPanelPosition({
+        left: event.clientX - containerRect.left - state.replyPanelDragOffsetX,
+        top: event.clientY - containerRect.top - state.replyPanelDragOffsetY
+      });
+
+      if (!nextPosition || isSameReplyPanelPosition(nextPosition, state.replyPanelDragLastPosition)) {
+        return;
+      }
+
+      state.replyPanelDragMoved = true;
+      state.replyPanelDragLastPosition = nextPosition;
+      state.settings.replyPanelPosition = nextPosition;
+      setReplyPanelInlinePosition(nextPosition);
+    }
+
+    function stopReplyPanelDrag(event) {
+      if (!state.isReplyPanelDragging) {
+        return;
+      }
+
+      if (event?.pointerId !== undefined && event.pointerId !== state.replyPanelDragPointerId) {
+        return;
+      }
+
+      const shouldSave = state.replyPanelDragMoved;
+      state.isReplyPanelDragging = false;
+      document.body.classList.remove("ld-reply-panel-dragging");
+      state.replyPanel?.classList.remove("is-dragging");
+
+      if (
+        state.replyPanelDragPointerId !== null
+        && state.replyPanelHead?.hasPointerCapture?.(state.replyPanelDragPointerId)
+      ) {
+        state.replyPanelHead.releasePointerCapture(state.replyPanelDragPointerId);
+      }
+
+      state.replyPanelDragPointerId = null;
+      state.replyPanelDragOffsetX = 0;
+      state.replyPanelDragOffsetY = 0;
+      state.replyPanelDragLastPosition = null;
+      state.replyPanelDragMoved = false;
+
+      if (shouldSave) {
+        state.suppressReplyPanelClick = true;
+        saveSettings();
+        return;
+      }
+
+      applyReplyPanelPosition();
+    }
+
+    function applyReplyPanelPosition(shouldPersist = false) {
+      if (!state.replyPanel) {
+        return;
+      }
+
+      if (window.innerWidth <= 720 || state.replyPanel.hidden) {
+        clearReplyPanelPositionStyles();
+        return;
+      }
+
+      const position = clampReplyPanelPosition(state.settings.replyPanelPosition);
+      if (!position) {
+        clearReplyPanelPositionStyles();
+        return;
+      }
+
+      setReplyPanelInlinePosition(position);
+
+      if (!isSameReplyPanelPosition(position, state.settings.replyPanelPosition)) {
+        state.settings.replyPanelPosition = position;
+        if (shouldPersist) {
+          saveSettings();
+        }
+      }
+    }
+
+    function setReplyPanelInlinePosition(position) {
+      if (!state.replyPanel || !position) {
+        return;
+      }
+
+      state.replyPanel.style.left = `${position.left}px`;
+      state.replyPanel.style.top = `${position.top}px`;
+      state.replyPanel.style.right = "auto";
+      state.replyPanel.style.bottom = "auto";
+    }
+
+    function clearReplyPanelPositionStyles() {
+      if (!state.replyPanel) {
+        return;
+      }
+
+      state.replyPanel.style.removeProperty("left");
+      state.replyPanel.style.removeProperty("top");
+      state.replyPanel.style.removeProperty("right");
+      state.replyPanel.style.removeProperty("bottom");
+    }
+
+    function normalizeReplyPanelPosition(value) {
+      if (!value || typeof value !== "object") {
+        return null;
+      }
+
+      const left = Number(value.left);
+      const top = Number(value.top);
+      if (!Number.isFinite(left) || !Number.isFinite(top)) {
+        return null;
+      }
+
+      return {
+        left: Math.round(left),
+        top: Math.round(top)
+      };
+    }
+
+    function clampReplyPanelPosition(position) {
+      const normalized = normalizeReplyPanelPosition(position);
+      if (!normalized || !state.replyPanel || !state.replyPanelMain || state.replyPanel.hidden) {
+        return normalized;
+      }
+
+      const horizontalInset = 14;
+      const verticalInset = 14;
+      const minTop = getReplyPanelDefaultTop();
+      const maxLeft = Math.max(horizontalInset, state.replyPanelMain.clientWidth - state.replyPanel.offsetWidth - horizontalInset);
+      const maxTop = Math.max(minTop, state.replyPanelMain.clientHeight - state.replyPanel.offsetHeight - verticalInset);
+
+      return {
+        left: clampNumber(normalized.left, horizontalInset, maxLeft),
+        top: clampNumber(normalized.top, minTop, maxTop)
+      };
+    }
+
+    function isSameReplyPanelPosition(a, b) {
+      return Boolean(a && b && a.left === b.left && a.top === b.top);
+    }
+
+    function getReplyPanelDefaultTop() {
+      return Math.max(16, (state.header?.offsetHeight || 0) + 16);
+    }
+
+    function clampNumber(value, min, max) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return min;
+      }
+
+      return Math.min(Math.max(Math.round(numeric), min), max);
     }
 
     function setReplyTarget(post) {
@@ -3506,14 +3781,6 @@
         return;
       }
 
-      if (!state.imagePreview?.hidden) {
-        if (target.closest(".ld-image-preview-close") || !target.closest(".ld-image-preview-image")) {
-          event.preventDefault();
-          closeImagePreview();
-        }
-        return;
-      }
-
       const image = target.closest(".ld-post-body img");
       if (!(image instanceof HTMLImageElement)) {
         return;
@@ -3524,8 +3791,23 @@
       openImagePreview(image);
     }
 
+    function handleImagePreviewClick(event) {
+      if (state.imagePreview?.hidden) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".ld-image-preview")) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      closeImagePreview();
+    }
+
     function openImagePreview(image) {
-      if (!state.imagePreview || !state.imagePreviewImage) {
+      if (!state.imagePreviewRoot || !state.imagePreview || !state.imagePreviewImage) {
         return;
       }
 
@@ -3538,6 +3820,7 @@
       state.imagePreviewImage.src = previewSrc;
       state.imagePreviewImage.alt = image.alt || "图片预览";
       state.imagePreviewImage.classList.remove("is-ready");
+      state.imagePreviewRoot.setAttribute("aria-hidden", "false");
       state.imagePreview.hidden = false;
       state.imagePreview.setAttribute("aria-hidden", "false");
       if (state.imagePreviewImage.complete) {
@@ -3550,10 +3833,11 @@
     }
 
     function closeImagePreview() {
-      if (!state.imagePreview || !state.imagePreviewImage) {
+      if (!state.imagePreviewRoot || !state.imagePreview || !state.imagePreviewImage) {
         return;
       }
 
+      state.imagePreviewRoot.setAttribute("aria-hidden", "true");
       state.imagePreview.hidden = true;
       state.imagePreview.setAttribute("aria-hidden", "true");
       resetImagePreviewScale();
@@ -3566,26 +3850,38 @@
       state.imagePreviewImage?.classList.add("is-ready");
     }
 
-    function handleDrawerRootWheel(event) {
+    function handleImagePreviewWheel(event) {
+      if (state.imagePreview?.hidden) {
+        return;
+      }
+
       const target = event.target;
       if (!(target instanceof Element)) {
         return;
       }
 
-      if (!state.imagePreview?.hidden && target.closest(".ld-image-preview-stage")) {
-        event.preventDefault();
+      event.preventDefault();
 
-        const nextScale = clampImagePreviewScale(
-          state.imagePreviewScale + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP : -IMAGE_PREVIEW_SCALE_STEP)
-        );
+      if (!target.closest(".ld-image-preview-stage")) {
+        return;
+      }
 
-        if (nextScale === state.imagePreviewScale) {
-          return;
-        }
+      const nextScale = clampImagePreviewScale(
+        state.imagePreviewScale + (event.deltaY < 0 ? IMAGE_PREVIEW_SCALE_STEP : -IMAGE_PREVIEW_SCALE_STEP)
+      );
 
-        updateImagePreviewTransformOrigin(event.clientX, event.clientY);
-        state.imagePreviewScale = nextScale;
-        applyImagePreviewScale();
+      if (nextScale === state.imagePreviewScale) {
+        return;
+      }
+
+      updateImagePreviewTransformOrigin(event.clientX, event.clientY);
+      state.imagePreviewScale = nextScale;
+      applyImagePreviewScale();
+    }
+
+    function handleDrawerRootWheel(event) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
         return;
       }
 
@@ -5245,6 +5541,7 @@
           settings.floatingReplyButton = DEFAULT_SETTINGS.floatingReplyButton;
         }
 
+        settings.replyPanelPosition = normalizeReplyPanelPosition(settings.replyPanelPosition);
         settings.postBodyFontSize = clampPostBodyFontSize(settings.postBodyFontSize);
         settings.drawerWidthCustom = clampDrawerWidth(settings.drawerWidthCustom);
         return settings;
@@ -5469,6 +5766,7 @@
       applyPostBodyFontSize();
       applyDrawerWidth();
       applyDrawerMode();
+      applyReplyPanelPosition();
       syncReplyUI();
       refreshCurrentView();
       setSettingsPanelOpen(false);
@@ -5594,6 +5892,10 @@
       const offset = `${state.header.offsetHeight + 8}px`;
       state.root.style.setProperty("--ld-settings-top", offset);
       state.root.style.setProperty("--ld-reply-panel-top", offset);
+
+      if (!state.isReplyPanelDragging) {
+        applyReplyPanelPosition(true);
+      }
     }
 
     function scheduleTopicTrackerPositionSync() {
