@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.6.1
+// @version      0.6.2
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -2925,9 +2925,7 @@
       reactBtn.setAttribute("aria-label", hasReacted ? "取消反应" : "添加反应");
       reactBtn.innerHTML = `
         <span class="ld-post-react-btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
-          </svg>
+          ${buildReactHeartIconSvg(hasReacted)}
         </span>
         ${reactCount > 0 ? `<span class="ld-post-react-count">${reactCount}</span>` : ""}
       `;
@@ -2996,6 +2994,17 @@
 
     function handleDrawerBodyScroll() {
       maybeLoadMorePosts();
+    }
+
+    function buildReactHeartIconSvg(isReacted) {
+      if (isReacted) {
+        return `<svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="currentColor"/>
+          </svg>`;
+      }
+      return `<svg viewBox="0 0 24 24" fill="none" focusable="false">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>`;
     }
 
     function toggleReplyPanel() {
@@ -4546,6 +4555,10 @@
         if (Array.isArray(updated?.reactions)) {
           post.reactions = updated.reactions;
           post.like_count = updated.reactions.reduce((sum, r) => sum + (r.count || 0), 0);
+          if (legacyLikeAction) {
+            legacyLikeAction.acted = !isUndo;
+            legacyLikeAction.count = Math.max(0, (legacyLikeAction.count || 0) + (isUndo ? -1 : 1));
+          }
         } else {
           if (!Array.isArray(post.reactions)) {
             post.reactions = [];
@@ -4570,11 +4583,23 @@
           }
         }
 
-        const nowReacted = post.reactions?.some((r) => r.reacted) || false;
+        let nowReacted = post.reactions?.some((r) => r.reacted) || false;
+        if (reactionId === "heart") {
+          const heartReacted = post.reactions?.some((r) => r.id === "heart" && r.reacted === true) || false;
+          const heartActionReacted = Array.isArray(post.actions_summary)
+            ? post.actions_summary.find((a) => a.id === 2)?.acted === true
+            : false;
+          // Some APIs return reaction counts without reliable `reacted`; heart toggle result is authoritative.
+          nowReacted = heartReacted || heartActionReacted || !isUndo;
+        }
         const newCount = post.like_count || 0;
 
         reactBtn.classList.toggle("ld-post-react-btn--reacted", nowReacted);
         reactBtn.setAttribute("aria-label", nowReacted ? "取消反应" : "添加反应");
+        const iconEl = reactBtn.querySelector(".ld-post-react-btn-icon");
+        if (iconEl) {
+          iconEl.innerHTML = buildReactHeartIconSvg(nowReacted);
+        }
 
         let countEl = reactBtn.querySelector(".ld-post-react-count");
         if (newCount > 0) {
