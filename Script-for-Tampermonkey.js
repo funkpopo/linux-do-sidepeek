@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.6.2
+// @version      0.6.3
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -1021,6 +1021,119 @@
     line-height: 1;
   }
 
+  #ld-drawer-root .ld-post-replies-stat-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  #ld-drawer-root .ld-post-info-item--replies-trigger {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color 0.12s, background 0.12s;
+  }
+
+  #ld-drawer-root .ld-post-info-item--replies-trigger:hover {
+    color: var(--tertiary, #3b82f6);
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 8%, transparent);
+  }
+
+  #ld-drawer-root .ld-post-info-item--replies-trigger:disabled {
+    cursor: wait;
+    opacity: 0.72;
+  }
+
+  #ld-drawer-root .ld-post-replies-popover {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    min-width: min(320px, calc(100vw - 48px));
+    max-width: min(400px, calc(100vw - 32px));
+    max-height: min(280px, 45vh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 8px 0;
+    background: var(--secondary, #fff);
+    border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.14);
+    z-index: 25;
+  }
+
+  #ld-drawer-root .ld-post-replies-popover[hidden] {
+    display: none !important;
+  }
+
+  #ld-drawer-root .ld-post-replies-popover-empty,
+  #ld-drawer-root .ld-post-replies-popover-hint {
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--primary-medium, rgba(15, 23, 42, 0.55));
+  }
+
+  #ld-drawer-root .ld-post-replies-popover-hint {
+    border-bottom: 1px solid var(--primary-low, rgba(15, 23, 42, 0.10));
+    margin-bottom: 4px;
+    padding-bottom: 8px;
+  }
+
+  #ld-drawer-root .ld-post-reply-preview-row {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    padding: 4px 8px 4px 10px;
+  }
+
+  #ld-drawer-root .ld-post-reply-preview-row:hover {
+    background: color-mix(in srgb, var(--primary-low, rgba(15, 23, 42, 0.08)) 70%, transparent);
+  }
+
+  #ld-drawer-root .ld-post-reply-preview-jump {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--primary, #1f2937);
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  #ld-drawer-root .ld-post-reply-preview-jump:hover {
+    background: color-mix(in srgb, var(--tertiary, #3b82f6) 10%, transparent);
+  }
+
+  #ld-drawer-root .ld-post-reply-preview-num {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--tertiary, #3b82f6);
+  }
+
+  #ld-drawer-root .ld-post-reply-preview-meta {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    color: var(--primary-medium, rgba(15, 23, 42, 0.68));
+  }
+
   #ld-drawer-root .ld-post-info-icon {
     width: 13px;
     height: 13px;
@@ -1249,7 +1362,8 @@
   }
 
   #ld-drawer-root .ld-reactions-popover:not([hidden]),
-  #ld-drawer-root .ld-flag-popover:not([hidden]) {
+  #ld-drawer-root .ld-flag-popover:not([hidden]),
+  #ld-drawer-root .ld-post-replies-popover:not([hidden]) {
     animation: ld-popover-in 0.12s ease;
   }
 
@@ -2006,7 +2120,7 @@
         setReplyPanelOpen(false);
       }
 
-      if (!target.closest(".ld-flag-wrap") && !target.closest(".ld-post-react-wrap")) {
+      if (!target.closest(".ld-flag-wrap") && !target.closest(".ld-post-react-wrap") && !target.closest(".ld-post-replies-stat-wrap")) {
         closeAllPopovers();
       }
 
@@ -2043,6 +2157,18 @@
         event.preventDefault();
         event.stopPropagation();
         closeImagePreview();
+        return;
+      }
+
+      if (
+        event.key === "Escape" &&
+        state.root?.querySelector(
+          ".ld-reactions-popover:not([hidden]), .ld-flag-popover:not([hidden]), .ld-post-replies-popover:not([hidden])"
+        )
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeAllPopovers();
         return;
       }
 
@@ -4968,8 +5094,11 @@
     }
 
     function closeAllPopovers() {
-      state.root?.querySelectorAll(".ld-reactions-popover, .ld-flag-popover").forEach((p) => {
+      state.root?.querySelectorAll(".ld-reactions-popover, .ld-flag-popover, .ld-post-replies-popover").forEach((p) => {
         p.setAttribute("hidden", "");
+      });
+      state.root?.querySelectorAll(".ld-post-info-item--replies-trigger").forEach((btn) => {
+        btn.setAttribute("aria-expanded", "false");
       });
     }
 
@@ -5454,11 +5583,405 @@
       return tab;
     }
 
+    function excerptFromCookedForReplyPreview(cooked, maxLen) {
+      const cap = typeof maxLen === "number" && maxLen > 8 ? maxLen : 80;
+      if (!cooked || typeof cooked !== "string") {
+        return "";
+      }
+
+      try {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = cooked;
+        const text = (tmp.textContent || "").replace(/\s+/g, " ").trim();
+        if (text.length <= cap) {
+          return text;
+        }
+
+        return `${text.slice(0, cap - 1).trimEnd()}…`;
+      } catch {
+        return "";
+      }
+    }
+
+    function getDirectRepliesToPostNumber(topic, parentPostNumber) {
+      if (!Number.isFinite(parentPostNumber) || !topic?.post_stream?.posts) {
+        return [];
+      }
+
+      return topic.post_stream.posts
+        .filter((p) => p && typeof p === "object"
+          && Number.isFinite(p.reply_to_post_number)
+          && p.reply_to_post_number === parentPostNumber)
+        .slice()
+        .sort((a, b) => (Number(a.post_number) || 0) - (Number(b.post_number) || 0));
+    }
+
+    function buildAbsoluteTopicPostUrl(topic, postNumber, topicIdHint = null) {
+      const topicId = Number(topic?.id ?? topicIdHint);
+      const pn = Number(postNumber);
+      if (!Number.isFinite(topicId) || !Number.isFinite(pn)) {
+        return "";
+      }
+
+      const slug = typeof topic?.slug === "string" ? topic.slug.trim() : "";
+      if (slug) {
+        return `${location.origin}/t/${slug}/${topicId}/${pn}`;
+      }
+
+      return `${location.origin}/t/topic/${topicId}/${pn}`;
+    }
+
+    function buildPostReplyPreviewRow(replyPost) {
+      const row = document.createElement("div");
+      row.className = "ld-post-reply-preview-row";
+
+      const num = replyPost.post_number;
+      const user = replyPost.username ? `@${replyPost.username}` : "";
+      const snippet = excerptFromCookedForReplyPreview(replyPost.cooked, 96);
+      const metaLine = [user, snippet].filter(Boolean).join(" · ") || "（无预览）";
+
+      const jumpBtn = document.createElement("button");
+      jumpBtn.type = "button";
+      jumpBtn.className = "ld-post-reply-preview-jump";
+      jumpBtn.setAttribute(
+        "aria-label",
+        Number.isFinite(num) ? `跳转到第 ${num} 楼（抽屉内无该楼时新标签打开）` : "跳转到该回复"
+      );
+
+      const numSpan = document.createElement("span");
+      numSpan.className = "ld-post-reply-preview-num";
+      numSpan.textContent = Number.isFinite(num) ? `#${num}` : "#?";
+
+      const metaSpan = document.createElement("span");
+      metaSpan.className = "ld-post-reply-preview-meta";
+      metaSpan.textContent = metaLine;
+
+      jumpBtn.append(numSpan, metaSpan);
+      jumpBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeAllPopovers();
+        if (!Number.isFinite(num)) {
+          return;
+        }
+
+        const inDrawer = state.content?.querySelector(`.ld-post-card[data-post-number="${num}"]`);
+        if (inDrawer) {
+          scrollTopicViewToTargetPost(num);
+          return;
+        }
+
+        const topic = state.currentTopic;
+        const url = buildAbsoluteTopicPostUrl(topic, num, state.currentTopicIdHint);
+        if (url) {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      });
+
+      row.appendChild(jumpBtn);
+      return row;
+    }
+
+    function canEagerLoadMissingDirectReplies() {
+      if (!state.currentTopic) {
+        return false;
+      }
+
+      if (state.settings.postMode === "first") {
+        return false;
+      }
+
+      if (state.settings.replyOrder === "latestFirst") {
+        return false;
+      }
+
+      if (state.currentTargetSpec?.hasTarget) {
+        return false;
+      }
+
+      return hasMoreTopicPosts(state.currentTopic);
+    }
+
+    async function waitForTopicLoadMoreIdle(maxWaitMs = 12000) {
+      const deadline = Date.now() + maxWaitMs;
+      while (state.isLoadingMorePosts && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 60));
+      }
+    }
+
+    async function fallbackSequentialDirectRepliesLoad(parentPostNumber, maxBatches = 12) {
+      if (!Number.isFinite(parentPostNumber)) {
+        return;
+      }
+
+      let batches = 0;
+      while (batches < maxBatches) {
+        if (getDirectRepliesToPostNumber(state.currentTopic, parentPostNumber).length > 0) {
+          return;
+        }
+
+        if (!canEagerLoadMissingDirectReplies()) {
+          return;
+        }
+
+        await waitForTopicLoadMoreIdle();
+
+        if (!canEagerLoadMissingDirectReplies()) {
+          return;
+        }
+
+        const loadedBefore = getLoadedTopicPostIds(state.currentTopic).length;
+        await loadMorePosts();
+        batches += 1;
+
+        const loadedAfter = getLoadedTopicPostIds(state.currentTopic).length;
+        if (loadedAfter <= loadedBefore) {
+          return;
+        }
+      }
+    }
+
+    async function ensureDirectRepliesLoadedForPopover(parentPostNumber, maxStreamBatches = 80) {
+      if (!Number.isFinite(parentPostNumber) || !state.currentUrl || !state.currentTopic) {
+        return;
+      }
+
+      const urlAtStart = state.currentUrl;
+      const previousScrollTop = state.drawerBody?.scrollTop ?? 0;
+      const startPostCount = (state.currentTopic.post_stream?.posts || []).length;
+
+      let topic = state.currentTopic;
+      const parentFromTopic = (topic.post_stream?.posts || []).find((p) => p?.post_number === parentPostNumber);
+      if (!parentFromTopic || !Number.isFinite(parentFromTopic.id)) {
+        await fallbackSequentialDirectRepliesLoad(parentPostNumber, 12);
+        return;
+      }
+
+      const expected = typeof parentFromTopic.reply_count === "number" ? parentFromTopic.reply_count : 0;
+
+      try {
+        const totalPosts = Number(topic.posts_count || 0);
+        const rawStream = topic?.post_stream?.stream;
+        const streamLen = Array.isArray(rawStream) ? rawStream.length : 0;
+        const needsStreamHydrate = streamLen === 0
+          || (totalPosts > 0 && streamLen < totalPosts);
+
+        if (needsStreamHydrate) {
+          const freshMeta = await fetchTrackedTopicJson(state.currentUrl, undefined, state.currentTopicIdHint, {
+            canonical: true,
+            trackVisit: false
+          });
+
+          if (state.currentUrl !== urlAtStart) {
+            return;
+          }
+
+          topic = mergeTopicPreviewData(topic, {
+            posts_count: freshMeta.posts_count,
+            post_stream: {
+              stream: freshMeta.post_stream?.stream || [],
+              posts: []
+            }
+          });
+        }
+
+        const stream = getTopicStreamIds(topic);
+        const parentIndex = stream.indexOf(parentFromTopic.id);
+
+        if (parentIndex === -1) {
+          await fallbackSequentialDirectRepliesLoad(parentPostNumber, 12);
+          return;
+        }
+
+        const loadedIds = new Set(getLoadedTopicPostIds(topic));
+        const pending = stream.slice(parentIndex + 1).filter((id) => !loadedIds.has(id));
+        let batches = 0;
+
+        while (pending.length > 0 && batches < maxStreamBatches) {
+          if (state.currentUrl !== urlAtStart) {
+            return;
+          }
+
+          const currentReplies = getDirectRepliesToPostNumber(topic, parentPostNumber);
+          if (expected > 0 && currentReplies.length >= expected) {
+            break;
+          }
+
+          const chunk = pending.splice(0, LOAD_MORE_BATCH_SIZE);
+          const posts = await fetchTopicPostsBatch(state.currentUrl, chunk, undefined, state.currentTopicIdHint);
+
+          if (state.currentUrl !== urlAtStart) {
+            return;
+          }
+
+          if (!posts.length) {
+            break;
+          }
+
+          topic = mergeTopicPreviewData(topic, { post_stream: { posts } });
+          for (const p of posts) {
+            if (Number.isFinite(p?.id)) {
+              loadedIds.add(p.id);
+            }
+          }
+
+          batches += 1;
+        }
+
+        const postsGrew = (topic.post_stream?.posts || []).length > startPostCount;
+        if (postsGrew) {
+          renderTopic(topic, state.currentUrl, state.currentFallbackTitle, state.currentResolvedTargetPostNumber, {
+            targetSpec: state.currentTargetSpec,
+            preserveScrollTop: previousScrollTop
+          });
+        } else {
+          state.currentTopic = topic;
+        }
+
+        if (
+          expected > 0
+          && getDirectRepliesToPostNumber(state.currentTopic, parentPostNumber).length < expected
+        ) {
+          await fallbackSequentialDirectRepliesLoad(parentPostNumber, 12);
+        }
+      } catch {
+        await fallbackSequentialDirectRepliesLoad(parentPostNumber, 12);
+      }
+    }
+
+    function resolveEmptyDirectRepliesMessage(expected) {
+      if (expected <= 0) {
+        return "暂无直接回复。";
+      }
+
+      if (hasMoreTopicPosts(state.currentTopic)) {
+        return "（帖子已被作者删除）";
+      }
+
+      return "（帖子已被作者删除）";
+    }
+
+    function populatePostRepliesPopover(popoverEl, parentPost) {
+      popoverEl.replaceChildren();
+
+      const topic = state.currentTopic;
+      const parentNum = parentPost?.post_number;
+      if (!Number.isFinite(parentNum)) {
+        return;
+      }
+
+      const replies = getDirectRepliesToPostNumber(topic, parentNum);
+      const expected = typeof parentPost.reply_count === "number" ? parentPost.reply_count : replies.length;
+
+      if (!replies.length) {
+        const empty = document.createElement("div");
+        empty.className = "ld-post-replies-popover-empty";
+        empty.textContent = resolveEmptyDirectRepliesMessage(expected);
+        popoverEl.appendChild(empty);
+        return;
+      }
+
+      if (replies.length < expected) {
+        const hint = document.createElement("div");
+        hint.className = "ld-post-replies-popover-hint";
+        hint.textContent = `以下为已加载的 ${replies.length} / ${expected} 条直接回复（帖子已被作者删除）`;
+        popoverEl.appendChild(hint);
+      }
+
+      for (const replyPost of replies) {
+        popoverEl.appendChild(buildPostReplyPreviewRow(replyPost));
+      }
+    }
+
+    function buildPostReplyStatWrap(parentPost, item) {
+      const wrap = document.createElement("div");
+      wrap.className = "ld-post-replies-stat-wrap";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "ld-post-info-item ld-post-info-item--replies-trigger";
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.setAttribute("aria-haspopup", "true");
+      trigger.setAttribute("aria-label", `第 ${parentPost.post_number ?? "?"} 楼有 ${item.count} 条直接回复，点击查看`);
+      trigger.title = `${item.label} ${item.count}：点击查看；将按全串流补齐数据，点击楼层可在预览内跳转或新标签打开`;
+
+      const iconSpan = document.createElement("span");
+      iconSpan.className = "ld-post-info-icon";
+      iconSpan.setAttribute("aria-hidden", "true");
+      iconSpan.innerHTML = item.icon;
+
+      const countSpan = document.createElement("span");
+      countSpan.textContent = String(item.count);
+
+      trigger.append(iconSpan, countSpan);
+
+      const popover = document.createElement("div");
+      popover.className = "ld-post-replies-popover";
+      popover.setAttribute("hidden", "");
+      popover.setAttribute("role", "region");
+      popover.setAttribute(
+        "aria-label",
+        Number.isFinite(parentPost.post_number)
+          ? `第 ${parentPost.post_number} 楼的直接回复`
+          : "直接回复列表"
+      );
+
+      trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const willOpen = popover.hasAttribute("hidden");
+        closeAllPopovers();
+        if (!willOpen) {
+          trigger.setAttribute("aria-expanded", "false");
+          return;
+        }
+
+        const parentNum = parentPost.post_number;
+        if (!Number.isFinite(parentNum)) {
+          return;
+        }
+
+        trigger.disabled = true;
+
+        void (async () => {
+          try {
+            await ensureDirectRepliesLoadedForPopover(parentNum);
+          } catch {
+            /* loadMorePosts 内部已处理错误 */
+          }
+
+          const card = state.content?.querySelector(`.ld-post-card[data-post-number="${parentNum}"]`);
+          const liveWrap = card?.querySelector(".ld-post-replies-stat-wrap");
+          const liveTrigger = liveWrap?.querySelector(".ld-post-info-item--replies-trigger");
+          const livePopover = liveWrap?.querySelector(".ld-post-replies-popover");
+
+          if (liveTrigger) {
+            liveTrigger.disabled = false;
+          } else if (trigger.isConnected) {
+            trigger.disabled = false;
+          }
+
+          if (!livePopover || !liveTrigger) {
+            return;
+          }
+
+          const topic = state.currentTopic;
+          const freshParent = (topic?.post_stream?.posts || []).find((p) => p?.post_number === parentNum) || parentPost;
+
+          populatePostRepliesPopover(livePopover, freshParent);
+          livePopover.removeAttribute("hidden");
+          liveTrigger.setAttribute("aria-expanded", "true");
+        })();
+      });
+
+      wrap.append(trigger, popover);
+      return wrap;
+    }
+
     function buildPostInfos(post) {
       const items = [];
 
       if (typeof post.reads === "number" && post.reads > 0) {
         items.push({
+          kind: "stat",
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
           count: post.reads,
           label: "阅读"
@@ -5470,6 +5993,7 @@
         : (Array.isArray(post.reactions) ? post.reactions.reduce((s, r) => s + (r.count || 0), 0) : 0);
       if (likeCount > 0) {
         items.push({
+          kind: "stat",
           icon: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
           count: likeCount,
           label: "点赞"
@@ -5478,6 +6002,7 @@
 
       if (typeof post.reply_count === "number" && post.reply_count > 0) {
         items.push({
+          kind: "replies",
           icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`,
           count: post.reply_count,
           label: "回复"
@@ -5492,6 +6017,11 @@
       infos.className = "ld-post-infos";
 
       for (const item of items) {
+        if (item.kind === "replies") {
+          infos.appendChild(buildPostReplyStatWrap(post, item));
+          continue;
+        }
+
         const span = document.createElement("span");
         span.className = "ld-post-info-item";
         span.setAttribute("title", item.label);
