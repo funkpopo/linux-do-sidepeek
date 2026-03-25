@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.6.3
+// @version      0.6.4
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -853,7 +853,7 @@
     border: 1px solid var(--primary-low, rgba(15, 23, 42, 0.12));
     border-radius: 18px;
     background: color-mix(in srgb, var(--secondary, #fff) 96%, var(--primary-low, rgba(15, 23, 42, 0.08)));
-    overflow: hidden;
+    overflow: visible;
   }
 
   #ld-drawer-root .ld-post-header {
