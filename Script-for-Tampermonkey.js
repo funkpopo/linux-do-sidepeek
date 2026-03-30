@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Linux.do SidePeek
 // @namespace    https://github.com/BobDLA/linux-do-sidepeek
-// @version      0.6.4
+// @version      0.6.5
 // @description  Preview Linux.do topics in a right-side drawer without leaving the current page.
 // @author       Linux.do SidePeek
 // @match        https://linux.do/*
@@ -1642,7 +1642,7 @@
     document.head.appendChild(styleEl);
 
     // --- Core Logic ---
-    const CURRENT_VERSION = "0.6.0";
+    const CURRENT_VERSION = resolveCurrentVersion();
     const GREASYFORK_URL = "https://greasyfork.org/zh-CN/scripts/570223-linux-do-sidepeek";
     const GREASYFORK_API_URL = "https://greasyfork.org/scripts/570223.json";
     const UPDATE_CHECK_KEY = "ld-update-check-v1";
@@ -4267,7 +4267,7 @@
       const shouldShow = canRefreshLatestReplies();
       const isRefreshing = state.isRefreshingLatestReplies;
       state.latestRepliesRefreshButton.hidden = !shouldShow;
-      state.latestRepliesRefreshButton.disabled = !shouldShow || isRefreshing || Boolean(state.abortController);
+      state.latestRepliesRefreshButton.disabled = !shouldShow || isRefreshing;
       state.latestRepliesRefreshButton.classList.toggle("is-refreshing", isRefreshing);
       const label = isRefreshing ? "刷新中..." : "刷新最新回复";
       state.latestRepliesRefreshButton.setAttribute("data-tooltip", label);
@@ -6588,9 +6588,33 @@
       });
     }
 
+    function resolveCurrentVersion() {
+      try {
+        const runtimeVersion = globalThis.GM_info?.script?.version;
+        if (typeof runtimeVersion === "string" && runtimeVersion.trim()) {
+          return runtimeVersion.trim();
+        }
+      } catch (_) {
+        // ignore runtime metadata read errors
+      }
+
+      return "0.6.5";
+    }
+
+    function normalizeVersionParts(version) {
+      return String(version || "")
+        .trim()
+        .replace(/^[^\d]*/, "")
+        .split(".")
+        .map((part) => {
+          const match = String(part).match(/^\d+/);
+          return match ? Number(match[0]) : 0;
+        });
+    }
+
     function compareVersions(a, b) {
-      const pa = String(a).split(".").map(Number);
-      const pb = String(b).split(".").map(Number);
+      const pa = normalizeVersionParts(a);
+      const pb = normalizeVersionParts(b);
       for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
         const diff = (pa[i] || 0) - (pb[i] || 0);
         if (diff !== 0) {
